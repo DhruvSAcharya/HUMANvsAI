@@ -1,0 +1,392 @@
+﻿@page "/"
+
+<div class="bg-gray-900 text-white">
+    <div class="flex h-screen flex-col">
+        <!-- 🔹 Header -->
+        <header class="flex shrink-0 items-center justify-between bg-gray-800 p-4 shadow-lg">
+            <h1 class="text-2xl font-bold text-cyan-400">🤖 Find the Bot</h1>
+            <div class="flex items-center space-x-4">
+                <span class="hidden text-sm font-medium sm:block">Welcome, Dhruv</span>
+                <button class="rounded-md bg-cyan-500 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-cyan-600">Logout</button>
+            </div>
+        </header>
+
+        <!-- 🔸 Main Content -->
+        <div class="flex flex-1 flex-col overflow-hidden lg:flex-row">
+            <!-- 🔹 Left Panel: Game List -->
+            <div class="flex w-full shrink-0 flex-col border-r-0 border-gray-700 bg-gray-800 p-4 lg:w-[26rem] lg:border-r">
+                <h2 class="mb-4 shrink-0 text-xl font-semibold text-cyan-400">🕹 Ongoing Games</h2>
+
+                <!-- Scrollable Game List -->
+                <div class="flex-grow space-y-4 overflow-y-auto pr-2">
+                    <!-- Game 1 -->
+                    <div class="cursor-pointer rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
+                        <div class="flex justify-between">
+                            <span class="font-bold">#123 • Round 6</span>
+                            <span class="intense-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🔥 Intense</span>
+                        </div>
+                        <div class="mt-2 text-sm text-gray-300">
+                            👤 3 Humans | 🤖 4 Bots <br />
+                            🏆 Win Rate: <span class="font-semibold text-purple-400">70% Bots</span>
+                        </div>
+                    </div>
+                    <!-- Game 2 -->
+                    <div class="cursor-pointer rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
+                        <div class="flex justify-between">
+                            <span class="font-bold">#444 • Round 3</span>
+                            <span class="balanced-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🟢 Balanced</span>
+                        </div>
+                        <div class="mt-2 text-sm text-gray-300">
+                            👤 4 Humans | 🤖 3 Bots <br />
+                            🏆 Win Rate: <span class="font-semibold text-purple-400">40% Bots</span>
+                        </div>
+                    </div>
+                    <!-- Game 3 -->
+                    <div class="cursor-pointer rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
+                        <div class="flex justify-between"><span class="font-bold">#581 • Round 2</span><span class="balanced-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🟢 Balanced</span></div>
+                        <div class="mt-2 text-sm text-gray-300">👤 5 Humans | 🤖 2 Bots <br>🏆 Win Rate: <span class="font-semibold text-purple-400">35% Bots</span></div>
+                    </div>
+                    <!-- Game 4 -->
+                    <div class="cursor-pointer rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
+                        <div class="flex justify-between"><span class="font-bold">#734 • Round 8</span><span class="intense-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🔥 Intense</span></div>
+                        <div class="mt-2 text-sm text-gray-300">👤 2 Humans | 🤖 5 Bots <br>🏆 Win Rate: <span class="font-semibold text-purple-400">80% Bots</span></div>
+                    </div>
+                    <!-- Game 5 -->
+                    <div class="cursor-pointer rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
+                        <div class="flex justify-between"><span class="font-bold">#812 • Round 1</span><span class="balanced-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🟢 Balanced</span></div>
+                        <div class="mt-2 text-sm text-gray-300">👤 6 Humans | 🤖 1 Bot <br>🏆 Win Rate: <span class="font-semibold text-purple-400">15% Bots</span></div>
+                    </div>
+                    <div class="cursor-pointer rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
+                        <div class="flex justify-between"><span class="font-bold">#812 • Round 1</span><span class="balanced-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🟢 Balanced</span></div>
+                        <div class="mt-2 text-sm text-gray-300">👤 6 Humans | 🤖 1 Bot <br>🏆 Win Rate: <span class="font-semibold text-purple-400">15% Bots</span></div>
+                    </div>
+                    <div class="cursor-pointer rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
+                        <div class="flex justify-between"><span class="font-bold">#812 • Round 1</span><span class="balanced-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🟢 Balanced</span></div>
+                        <div class="mt-2 text-sm text-gray-300">👤 6 Humans | 🤖 1 Bot <br>🏆 Win Rate: <span class="font-semibold text-purple-400">15% Bots</span></div>
+                    </div>
+                    <div class="cursor-pointer rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
+                        <div class="flex justify-between"><span class="font-bold">#812 • Round 1</span><span class="balanced-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🟢 Balanced</span></div>
+                        <div class="mt-2 text-sm text-gray-300">👤 6 Humans | 🤖 1 Bot <br>🏆 Win Rate: <span class="font-semibold text-purple-400">15% Bots</span></div>
+                    </div>
+                    <div class="cursor-pointer rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
+                        <div class="flex justify-between"><span class="font-bold">#812 • Round 1</span><span class="balanced-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🟢 Balanced</span></div>
+                        <div class="mt-2 text-sm text-gray-300">👤 6 Humans | 🤖 1 Bot <br>🏆 Win Rate: <span class="font-semibold text-purple-400">15% Bots</span></div>
+                    </div>
+
+                </div>
+
+                <!-- 🔘 Join Room Button (Sticks to Bottom) -->
+                <div class="mt-4 shrink-0 text-center">
+                    <button class="w-full rounded-xl bg-green-600 px-6 py-3 text-lg font-bold text-white shadow-lg transition hover:bg-green-700">
+                        🔗 Join the Room
+                    </button>
+                </div>
+            </div>
+
+            <!-- 🔸 Chat Panel -->
+            <div class="flex w-full flex-1 flex-col bg-gray-900 p-4 lg:w-auto">
+                <div class="flex-1 space-y-4 overflow-y-auto pr-2">
+                    <!-- Messages -->
+                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
+                        <strong>User123:</strong> <span class="font-normal text-gray-200">I think #botX is acting weird 🤔</span>
+                    </div>
+                    <div class="w-fit max-w-lg self-end rounded-lg rounded-br-none bg-cyan-600 p-3 text-white shadow-md">
+                        <strong>You:</strong> <span class="font-normal">Yeah! Let’s vote it out.</span>
+                    </div>
+                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
+                        <strong>BotHunterX:</strong> <span class="font-normal text-gray-200">Definitely, its response time is too consistent.</span>
+                    </div>
+                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
+                        <strong>PlayerZ:</strong> <span class="font-normal text-gray-200">Are we sure? I thought #botY was more suspicious. It keeps agreeing with everyone.</span>
+                    </div>
+                    <div class="w-fit max-w-lg self-end rounded-lg rounded-br-none bg-cyan-600 p-3 text-white shadow-md">
+                        <strong>You:</strong> <span class="font-normal">Good point. Let's watch them both. But my vote is still for #botX.</span>
+                    </div>
+                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
+                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
+                    </div>
+                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
+                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
+                    </div>
+                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
+                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
+                    </div>
+                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
+                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
+                    </div>
+                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
+                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
+                    </div>
+                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
+                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
+                    </div>
+                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
+                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
+                    </div>
+                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
+                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
+                    </div>
+                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
+                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
+                    </div>
+                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
+                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
+                    </div>
+                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
+                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
+                    </div>
+                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
+                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
+                    </div>
+                </div>
+
+                <!-- Input Box -->
+                <div class="mt-4 flex shrink-0 items-center space-x-2">
+                    <input type="text" placeholder="Type a message..." class="flex-1 rounded-lg border border-gray-600 bg-gray-800 px-4 py-2 text-white shadow-sm focus:border-cyan-500 focus:outline-none" />
+                    <button class="rounded-lg bg-cyan-500 px-4 py-2 font-semibold text-white shadow-md transition hover:bg-cyan-600">Send</button>
+                </div>
+            </div>
+
+            <!-- 🔸 Stats Panel -->
+            <div class="hidden w-full shrink-0 border-l-0 border-gray-700 bg-gray-800 p-6 md:block lg:w-[48rem] lg:border-l">
+                <h2 class="mb-5 flex items-center gap-2 text-2xl font-semibold text-cyan-400">
+                    <span>📊</span> <span>Game Statistics</span>
+                </h2>
+
+                <!-- Line Graph Section -->
+                <div class="mb-8 rounded-xl bg-gray-900 p-4 shadow-md">
+                    <div class="mb-3 flex items-center justify-between">
+                        <h3 class="flex items-center gap-2 text-lg font-medium text-gray-100">
+                            📈 <span>Humans vs Bots (Live)</span>
+                        </h3>
+                        <span class="text-sm text-gray-400 italic">Updating every second</span>
+                    </div>
+
+                    <!-- Chart -->
+                    <div class="flex h-80 items-center justify-center overflow-hidden rounded-lg bg-gray-800 text-gray-500">
+                        @if (Series != null && Series[0].Data.Length >= 4)
+                        {
+                            <MudChart ChartType="ChartType.Line"
+                                      ChartSeries="@Series"
+                                      XAxisLabels="@XAxisLabels"
+                                      Options="@options"
+                                      Width="100%"
+                                      Height="350"                                      
+                                      />
+                        }
+                        else
+                        {
+                            <div class="text-gray-500">Loading data...</div>
+                        }
+                    </div>
+
+                    <!-- Custom Legend with Circles -->
+                    <div class="mt-4 flex justify-center gap-6 text-sm font-medium text-gray-300">
+                        <div class="flex items-center gap-2">
+                            <span class="h-3 w-3 rounded-full" style="background-color: #3B82F6"></span>
+                            <span>Bot Count</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="h-3 w-3 rounded-full" style="background-color: #10B981"></span>
+                            <span>Human Count</span>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Top Players Table -->
+                <div class="rounded-xl bg-gray-900 p-4 shadow-md">
+                    <h3 class="mb-3 flex items-center gap-2 text-lg font-medium text-gray-100">
+                        🏅 <span>Top 10 Players</span>
+                    </h3>
+
+                    <div class="overflow-hidden rounded-lg border border-gray-700">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-800 text-gray-300">
+                                <tr>
+                                    <th class="p-3 font-semibold">Rank</th>
+                                    <th class="p-3 font-semibold">Player</th>
+                                    <th class="p-3 font-semibold">Win %</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-700">
+                                <tr class="transition hover:bg-gray-800">
+                                    <td class="p-3 text-gray-300">1</td>
+                                    <td class="p-3 text-gray-200">HumanHero</td>
+                                    <td class="p-3 font-bold text-green-400">92%</td>
+                                </tr>
+                                <tr class="transition hover:bg-gray-800">
+                                    <td class="p-3 text-gray-300">2</td>
+                                    <td class="p-3 text-gray-200">BotHunterX</td>
+                                    <td class="p-3 font-bold text-green-400">89%</td>
+                                </tr>
+                                <tr class="transition hover:bg-gray-800">
+                                    <td class="p-3 text-gray-300">3</td>
+                                    <td class="p-3 text-gray-200">PlayerZ</td>
+                                    <td class="p-3 font-bold text-green-400">85%</td>
+                                </tr>
+                                <tr class="transition hover:bg-gray-800">
+                                    <td class="p-3 text-gray-300">4</td>
+                                    <td class="p-3 text-gray-200">BotHunterX</td>
+                                    <td class="p-3 font-bold text-green-400">89%</td>
+                                </tr>
+                                <tr class="transition hover:bg-gray-800">
+                                    <td class="p-3 text-gray-300">5</td>
+                                    <td class="p-3 text-gray-200">PlayerZ</td>
+                                    <td class="p-3 font-bold text-green-400">85%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private ChartOptions options = new ChartOptions();
+
+    public List<ChartSeries> Series = new()
+    {
+        new ChartSeries { Name = "● Bot Count", Data = Array.Empty<double>()},
+        new ChartSeries { Name = "Human Count", Data = Array.Empty<double>() }
+    };
+
+    private List<DateTime> Timestamps = new();
+    private string[] XAxisLabels = Array.Empty<string>();
+
+    private Random _random = new();
+    private DateTime _startTime;
+    private int jump = 0;
+
+    private CancellationTokenSource _cts = new();
+    private bool isRunning = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _startTime = DateTime.Now;
+        options.InterpolationOption = InterpolationOption.EndSlope;
+        options.YAxisFormat = "n0";
+        options.ChartPalette = new[] { "#38bdf8", "#10b981" };
+        options.ShowLegend = false;
+        options.ShowLegendLabels = false;
+        options.ShowLabels = false;
+
+        // Seed with initial points
+        for (int i = 0; i < 4; i++)
+            AddRandomTimePoint();
+
+        UpdateLabels();
+        isRunning = true;
+        _ = RunSimulation(_cts.Token); // Fire and forget
+    }
+
+    private async Task RunSimulation(CancellationToken token)
+    {
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                await Task.Delay(1000, token);
+                AddRandomTimePoint();
+
+                if (Series[0].Data.Length >= 4)
+                {
+                    UpdateLabels();
+                    await InvokeAsync(StateHasChanged);
+                }
+                StateHasChanged();
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Expected on dispose
+        }
+    }
+
+    private void AddRandomTimePoint()
+    {
+        int secondsJump = _random.Next(1, 10);
+
+        if (_random.Next(1, 10) % 2 == 1)
+            jump += _random.Next(1, 10);
+        else
+            jump -= _random.Next(1, 5);
+
+        DateTime newTime = Timestamps.LastOrDefault(_startTime).AddSeconds(secondsJump);
+        Timestamps.Add(newTime);
+
+        double botCount = jump % 2 == 0
+            ? _random.Next(-110, 110) + jump
+            : _random.Next(jump, jump + 10);
+
+        double humanCount = jump % 2 != 0
+            ? _random.Next(-110, 110) + jump
+            : _random.Next(jump, jump + 10);
+
+        Series[0].Data = Series[0].Data.Append(botCount).ToArray();
+        Series[1].Data = Series[1].Data.Append(humanCount).ToArray();
+
+        // Keep chart efficient
+        if (Timestamps.Count > 80)
+        {
+            Timestamps.RemoveAt(0);
+            Series[0].Data = Series[0].Data.Skip(1).ToArray();
+            Series[1].Data = Series[1].Data.Skip(1).ToArray();
+        }
+    }
+
+    private void UpdateLabels()
+    {
+        int total = Timestamps.Count;
+
+        if (total <= 8)
+        {
+            XAxisLabels = Timestamps.Select(t => GetSmartLabel(t)).ToArray();
+        }
+        else
+        {
+            int interval = total / 8;
+            XAxisLabels = Timestamps.Select((t, i) => (i % interval == 0) ? GetSmartLabel(t) : "").ToArray();
+        }
+    }
+
+    private string GetSmartLabel(DateTime t)
+    {
+        var age = DateTime.Now - t;
+
+        if (age.TotalSeconds < 5)
+            return t.ToString("HH:mm:ss");
+        else if (age.TotalMinutes < 5)
+            return t.ToString("HH:mm");
+        else if (age.TotalHours < 24)
+            return t.ToString("dd MMM HH");
+        else if (age.TotalDays < 30)
+            return t.ToString("dd MMM");
+        else if (age.TotalDays < 365)
+            return t.ToString("MMM yyyy");
+        else
+            return t.ToString("yyyy");
+    }
+
+    private void ResetChart()
+    {
+        Timestamps.Clear();
+        Series[0].Data = Array.Empty<double>();
+        Series[1].Data = Array.Empty<double>();
+        XAxisLabels = Array.Empty<string>();
+        _startTime = DateTime.Now;
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+}
+
+
+
+
+
