@@ -1,0 +1,92 @@
+﻿@inject PlayerManager playerManager
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<string> OnSubmit { get; set; }
+
+    private string Name { get; set; } = string.Empty;
+    private bool ShowValidation { get; set; } = false;
+    private bool ShowValidationNameExist { get; set; } = false;
+
+    private async Task SubmitAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Name))
+        {
+            ShowValidation = true;
+            return;
+        }
+
+        if (ShowValidationNameExist)
+        {
+            return;
+        }
+
+        ShowValidation = false;
+        await OnSubmit.InvokeAsync(Name);
+        await OnClose.InvokeAsync();
+        Name = string.Empty;
+    }
+
+    private async Task CancelAsync()
+    {
+        Name = string.Empty;
+        ShowValidation = false;
+        ShowValidationNameExist = false;
+        await OnClose.InvokeAsync();
+    }
+    private void NameChanged(ChangeEventArgs e)
+    {
+        Name = e.Value?.ToString() ?? string.Empty;
+        ShowValidationNameExist = playerManager.CheckIfPlayerNameExists(Name);
+    }
+}
+
+@if (IsOpen)
+{
+    <!-- Modal Overlay -->
+    <div class="inset-0 z-[1000] flex items-center justify-center"
+         style="position:fixed; top: 0; left: 30%; right: 30%; bottom: 0;">
+
+        <!-- Modal Box -->
+        <div class="z-[1001] w-full max-w-md rounded-lg border p-6 shadow-xl"
+             style="background-color: #1f2937;">
+
+            <!-- Heading -->
+            <h2 class="mb-4 text-xl font-semibold text-white">
+                Enter Your Name
+            </h2>
+
+            <!-- Input -->
+            <input @bind="Name"
+                    @oninput="NameChanged"
+                   type="text"
+                   placeholder="Your Name"
+                   class="placeholder-gray-400 w-full rounded border border-gray-500 bg-gray-700 px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+
+            @if (ShowValidation)
+            {
+                <p class="mt-1 text-sm font-normal text-red-500">
+                    Please enter a valid name.
+                </p>
+            }
+            @if (ShowValidationNameExist)
+            {
+                <p class="mt-1 text-sm font-normal text-red-500">
+                    This name already exists. Please choose another.
+                </p>
+			}
+
+            <!-- Action Buttons -->
+            <div class="mt-4 flex justify-end gap-2">
+                <button @onclick="CancelAsync"
+                        class="cursor-pointer rounded bg-gray-500 px-4 py-2 text-white hover:bg-gray-600">
+                    Cancel
+                </button>
+                <button @onclick="SubmitAsync"
+                        class="cursor-pointer rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
+                    Submit
+                </button>
+            </div>
+        </div>
+    </div>
+}

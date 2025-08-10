@@ -7,10 +7,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
-    <title>Find the Bot - Enhanced Design</title>
+    <title>Find the Bot</title>
     <link rel="stylesheet" href="app.css" />
-    <link rel="stylesheet" href="WebUi.styles.css" />
+    @* <link rel="stylesheet" href="WebUi.styles.css" /> *@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- 1. Add MudBlazor CSS Link -->
+    @* <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" /> *@
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -29,22 +32,14 @@
             border-radius: 4px;
         }
 
-            ::-webkit-scrollbar-thumb:hover {
-                background: #6b7280; /* bg-gray-500 */
-            }
-
-        .intense-gradient {
-            background: linear-gradient(90deg, #FF416C 0%, #FF4B2B 100%);
-        }
-
-        .balanced-gradient {
-            background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%);
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* bg-gray-500 */
         }
 
         .mud-chart * {
             color: #e5e7eb !important; /* Light gray for axis labels */
-            font-size: 14px !important;
-            padding: 10px !important; 
+            font-size: 10px !important;
+            padding: 5px !important; 
         }
 
         .mud-chart .mud-tooltip {
@@ -54,12 +49,13 @@
 
         .mud-chart text {
             fill: #ffffff !important; /* White font for dark backgrounds */
-            font-size: 14px !important;
+            font-size: 8px !important;
         }
 
         .mud-chart-legend {
             display: none !important;
         }
+        
     </style>
     <HeadOutlet />
     
@@ -67,6 +63,8 @@
 
 <body>
     <Routes />
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script src="js/scrollSnap.js"></script>
     <script src="_framework/blazor.web.js"></script>
 </body>
 

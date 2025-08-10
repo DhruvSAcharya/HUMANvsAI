@@ -1,37 +1,74 @@
 ﻿@page "/"
+@inject IJSRuntime JS
+@inject NavigationManager NavigationManager
+@inject RoomManager roomManager
+@inject PlayerManager playerManager
+@inject VoteManager voteManager
+@inject BotManager botManager
+@rendermode InteractiveServer
 
-<div class="bg-gray-900 text-white">
-    <div class="flex h-screen flex-col">
-        <!-- 🔹 Header -->
-        <header class="flex shrink-0 items-center justify-between bg-gray-800 p-4 shadow-lg">
-            <h1 class="text-2xl font-bold text-cyan-400">🤖 Find the Bot</h1>
-            <div class="flex items-center space-x-4">
-                <span class="hidden text-sm font-medium sm:block">Welcome, Dhruv</span>
-                <button class="rounded-md bg-cyan-500 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-cyan-600">Logout</button>
-            </div>
-        </header>
 
-        <!-- 🔸 Main Content -->
-        <div class="flex flex-1 flex-col overflow-hidden lg:flex-row">
+
+<PlayerInputModel IsOpen="@IsModalOpen" OnClose="@CloseModal" OnSubmit="@HandleNameSubmit" />
+
+<div class="flex h-screen flex-col bg-gray-800 text-white">
+    <!-- 🔹 Header (Sticky with Fixed Height) -->
+    <!-- Added a fixed height (h-18 which is 4.5rem) to allow for precise calculation in the main content -->
+    <header class="sticky top-0 z-50 flex h-18 shrink-0 items-center justify-between bg-gray-800 p-4">
+        <h1 class="text-2xl font-bold text-cyan-400">🤖 Find the Bot</h1>
+        <div class="flex items-center space-x-4">
+            @if(CurrentPlayer != null)
+            {
+                <span class="hidden text-sm font-medium sm:block">Welcome, @CurrentPlayer.Name</span>
+                <button @onclick="async () => { await Logout(); }" class="rounded-md bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-red-600">Logout</button>
+            }
+            
+        </div>
+    </header>
+    
+    
+    <div id="scrollContainer" class="h-screen snap-y snap-mandatory overflow-y-auto scroll-smooth" style="scroll-padding-top: 4.5rem;">
+        <section class="snap-section flex h-full min-h-[calc(100vh-4.5rem)] snap-start flex-col lg:flex-row">
             <!-- 🔹 Left Panel: Game List -->
-            <div class="flex w-full shrink-0 flex-col border-r-0 border-gray-700 bg-gray-800 p-4 lg:w-[26rem] lg:border-r">
+            <div class="flex w-full shrink-0 flex-col border-r-0 border-gray-700 bg-gray-800 p-4 lg:w-[26rem]">
+                <!-- 🔸 Chat Panel -->
+                <div>
+                    @if (CurrentRoom != null)
+                    {
+                        <p>Time Left: @((int)CurrentRoom._remainingSeconds)</p>
+                    }
+                    else
+                    {
+                        <p>Round Time: 90 Seconds</p>
+                    }
+                </div>
                 <h2 class="mb-4 shrink-0 text-xl font-semibold text-cyan-400">🕹 Ongoing Games</h2>
 
                 <!-- Scrollable Game List -->
                 <div class="flex-grow space-y-4 overflow-y-auto pr-2">
-                    <!-- Game 1 -->
-                    <div class="cursor-pointer rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
-                        <div class="flex justify-between">
-                            <span class="font-bold">#123 • Round 6</span>
-                            <span class="intense-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🔥 Intense</span>
+                    @foreach(Room room in roomManager.GetRooms())
+                    {
+                        <div class="rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
+                            <div class="flex justify-between">
+                                <span class="font-bold">#@room.RoomId • Round @room.RoundNumber</span>
+                                @if(room.Severity == RoomHeat.Intense)
+                                {
+                                    <span class="intense-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🔥 Intense</span>
+                                }
+                                else
+                                {
+                                    <span class="balanced-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🟢 Balanced</span>
+                                }
+                            </div>
+                            <div class="mt-2 text-sm text-gray-300">
+                                👤 @room.GetCurrentHumanCount() Humans | 🤖 @room.GetCurrentBotCount() Bots <br />
+                                🏆 Win Rate: <span class="font-semibold text-purple-400">@room.GetWinRate()</span>
+                            </div>
                         </div>
-                        <div class="mt-2 text-sm text-gray-300">
-                            👤 3 Humans | 🤖 4 Bots <br />
-                            🏆 Win Rate: <span class="font-semibold text-purple-400">70% Bots</span>
-                        </div>
-                    </div>
-                    <!-- Game 2 -->
-                    <div class="cursor-pointer rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
+                    }
+                    
+                    <!-- Other games -->
+                    <div class="rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
                         <div class="flex justify-between">
                             <span class="font-bold">#444 • Round 3</span>
                             <span class="balanced-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🟢 Balanced</span>
@@ -41,218 +78,242 @@
                             🏆 Win Rate: <span class="font-semibold text-purple-400">40% Bots</span>
                         </div>
                     </div>
-                    <!-- Game 3 -->
-                    <div class="cursor-pointer rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
-                        <div class="flex justify-between"><span class="font-bold">#581 • Round 2</span><span class="balanced-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🟢 Balanced</span></div>
-                        <div class="mt-2 text-sm text-gray-300">👤 5 Humans | 🤖 2 Bots <br>🏆 Win Rate: <span class="font-semibold text-purple-400">35% Bots</span></div>
-                    </div>
-                    <!-- Game 4 -->
-                    <div class="cursor-pointer rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
-                        <div class="flex justify-between"><span class="font-bold">#734 • Round 8</span><span class="intense-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🔥 Intense</span></div>
-                        <div class="mt-2 text-sm text-gray-300">👤 2 Humans | 🤖 5 Bots <br>🏆 Win Rate: <span class="font-semibold text-purple-400">80% Bots</span></div>
-                    </div>
-                    <!-- Game 5 -->
-                    <div class="cursor-pointer rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
-                        <div class="flex justify-between"><span class="font-bold">#812 • Round 1</span><span class="balanced-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🟢 Balanced</span></div>
-                        <div class="mt-2 text-sm text-gray-300">👤 6 Humans | 🤖 1 Bot <br>🏆 Win Rate: <span class="font-semibold text-purple-400">15% Bots</span></div>
-                    </div>
-                    <div class="cursor-pointer rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
-                        <div class="flex justify-between"><span class="font-bold">#812 • Round 1</span><span class="balanced-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🟢 Balanced</span></div>
-                        <div class="mt-2 text-sm text-gray-300">👤 6 Humans | 🤖 1 Bot <br>🏆 Win Rate: <span class="font-semibold text-purple-400">15% Bots</span></div>
-                    </div>
-                    <div class="cursor-pointer rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
-                        <div class="flex justify-between"><span class="font-bold">#812 • Round 1</span><span class="balanced-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🟢 Balanced</span></div>
-                        <div class="mt-2 text-sm text-gray-300">👤 6 Humans | 🤖 1 Bot <br>🏆 Win Rate: <span class="font-semibold text-purple-400">15% Bots</span></div>
-                    </div>
-                    <div class="cursor-pointer rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
-                        <div class="flex justify-between"><span class="font-bold">#812 • Round 1</span><span class="balanced-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🟢 Balanced</span></div>
-                        <div class="mt-2 text-sm text-gray-300">👤 6 Humans | 🤖 1 Bot <br>🏆 Win Rate: <span class="font-semibold text-purple-400">15% Bots</span></div>
-                    </div>
-                    <div class="cursor-pointer rounded-lg border border-gray-700 bg-gray-900 p-4 shadow-lg transition hover:bg-gray-700">
-                        <div class="flex justify-between"><span class="font-bold">#812 • Round 1</span><span class="balanced-gradient rounded-full px-3 py-1 text-xs font-medium text-white">🟢 Balanced</span></div>
-                        <div class="mt-2 text-sm text-gray-300">👤 6 Humans | 🤖 1 Bot <br>🏆 Win Rate: <span class="font-semibold text-purple-400">15% Bots</span></div>
-                    </div>
-
                 </div>
 
-                <!-- 🔘 Join Room Button (Sticks to Bottom) -->
-                <div class="mt-4 shrink-0 text-center">
-                    <button class="w-full rounded-xl bg-green-600 px-6 py-3 text-lg font-bold text-white shadow-lg transition hover:bg-green-700">
-                        🔗 Join the Room
-                    </button>
-                </div>
+                
+                @if(CurrentRoom == null)
+                {
+                    <div class="mt-4 shrink-0 text-center">
+                        <button @onclick="async () => { await JoinRoom(); }" class="bg-green-600 px-6 py-3 text-white w-full cursor-pointer rounded-xl text-lg font-bold shadow-lg transition hover:bg-green-700">
+                            🔗 Join the Room
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="mt-4 shrink-0 text-center">
+                        <button @onclick="async () => { await LeaveGroup(); }" class="bg-red-600 px-6 py-3 text-white w-full cursor-pointer rounded-xl text-lg font-bold shadow-lg transition hover:bg-red-700">
+                            ❌ Leave the Room
+						</button>
+					</div>
+                }
+
             </div>
 
-            <!-- 🔸 Chat Panel -->
-            <div class="flex w-full flex-1 flex-col bg-gray-900 p-4 lg:w-auto">
-                <div class="flex-1 space-y-4 overflow-y-auto pr-2">
-                    <!-- Messages -->
-                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
-                        <strong>User123:</strong> <span class="font-normal text-gray-200">I think #botX is acting weird 🤔</span>
-                    </div>
-                    <div class="w-fit max-w-lg self-end rounded-lg rounded-br-none bg-cyan-600 p-3 text-white shadow-md">
-                        <strong>You:</strong> <span class="font-normal">Yeah! Let’s vote it out.</span>
-                    </div>
-                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
-                        <strong>BotHunterX:</strong> <span class="font-normal text-gray-200">Definitely, its response time is too consistent.</span>
-                    </div>
-                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
-                        <strong>PlayerZ:</strong> <span class="font-normal text-gray-200">Are we sure? I thought #botY was more suspicious. It keeps agreeing with everyone.</span>
-                    </div>
-                    <div class="w-fit max-w-lg self-end rounded-lg rounded-br-none bg-cyan-600 p-3 text-white shadow-md">
-                        <strong>You:</strong> <span class="font-normal">Good point. Let's watch them both. But my vote is still for #botX.</span>
-                    </div>
-                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
-                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
-                    </div>
-                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
-                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
-                    </div>
-                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
-                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
-                    </div>
-                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
-                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
-                    </div>
-                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
-                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
-                    </div>
-                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
-                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
-                    </div>
-                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
-                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
-                    </div>
-                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
-                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
-                    </div>
-                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
-                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
-                    </div>
-                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
-                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
-                    </div>
-                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
-                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
-                    </div>
-                    <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
-                        <strong>User123:</strong> <span class="font-normal text-gray-200">Okay, voting for #botX.</span>
-                    </div>
-                </div>
-
-                <!-- Input Box -->
-                <div class="mt-4 flex shrink-0 items-center space-x-2">
-                    <input type="text" placeholder="Type a message..." class="flex-1 rounded-lg border border-gray-600 bg-gray-800 px-4 py-2 text-white shadow-sm focus:border-cyan-500 focus:outline-none" />
-                    <button class="rounded-lg bg-cyan-500 px-4 py-2 font-semibold text-white shadow-md transition hover:bg-cyan-600">Send</button>
-                </div>
-            </div>
-
-            <!-- 🔸 Stats Panel -->
-            <div class="hidden w-full shrink-0 border-l-0 border-gray-700 bg-gray-800 p-6 md:block lg:w-[48rem] lg:border-l">
-                <h2 class="mb-5 flex items-center gap-2 text-2xl font-semibold text-cyan-400">
-                    <span>📊</span> <span>Game Statistics</span>
-                </h2>
-
-                <!-- Line Graph Section -->
-                <div class="mb-8 rounded-xl bg-gray-900 p-4 shadow-md">
-                    <div class="mb-3 flex items-center justify-between">
-                        <h3 class="flex items-center gap-2 text-lg font-medium text-gray-100">
-                            📈 <span>Humans vs Bots (Live)</span>
-                        </h3>
-                        <span class="text-sm text-gray-400 italic">Updating every second</span>
-                    </div>
-
-                    <!-- Chart -->
-                    <div class="flex h-80 items-center justify-center overflow-hidden rounded-lg bg-gray-800 text-gray-500">
-                        @if (Series != null && Series[0].Data.Length >= 4)
+            <div class="flex w-full flex-1 flex-col rounded-xl bg-gray-900 p-4 lg:w-auto">
+                
+                <div id="chatContainer" class="flex-1 space-y-4 overflow-y-auto rounded-lg pr-2">
+                    @if(messages.Count == 0)
+                    {
+                        <div class="flex justify-center text-center text-gray-500">No messages yet. Start chatting!</div>
+					}
+                    @foreach(var msg in messages)
+                    {
+                        if(msg.PlayerId == CurrentPlayer?.PlayerId)
                         {
-                            <MudChart ChartType="ChartType.Line"
-                                      ChartSeries="@Series"
-                                      XAxisLabels="@XAxisLabels"
-                                      Options="@options"
-                                      Width="100%"
-                                      Height="350"                                      
-                                      />
+                            <div class="w-fit max-w-lg self-end rounded-lg rounded-br-none bg-cyan-600 p-3 text-white shadow-md">
+                                <strong>You:</strong> <span class="font-normal">@msg.Text</span>
+                            </div>
                         }
                         else
                         {
-                            <div class="text-gray-500">Loading data...</div>
+                            <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
+                                <strong>@playerManager.GetPlayerName(msg.PlayerId):</strong> <span class="font-normal text-gray-200">@msg.Text</span>
+                            </div>
                         }
-                    </div>
+                    }
+                </div>
 
-                    <!-- Custom Legend with Circles -->
-                    <div class="mt-4 flex justify-center gap-6 text-sm font-medium text-gray-300">
-                        <div class="flex items-center gap-2">
-                            <span class="h-3 w-3 rounded-full" style="background-color: #3B82F6"></span>
-                            <span>Bot Count</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="h-3 w-3 rounded-full" style="background-color: #10B981"></span>
-                            <span>Human Count</span>
-                        </div>
+                @if(CurrentPlayer != null && CurrentRoom != null)
+                {
+                    <!-- Input Box -->
+                    <div class="mt-4 flex shrink-0 items-center space-x-2">
+                        <input type="text" @bind="messageInput" placeholder="Type a message..." class="flex-1 rounded-lg border border-gray-600 bg-gray-800 px-4 py-2 text-white shadow-sm focus:border-cyan-500 focus:outline-none" />
+                        <button @onclick="SendMessage" class="rounded-lg bg-cyan-500 px-4 py-2 font-semibold text-white shadow-md transition hover:bg-cyan-600">Send</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="flex justify-center text-sm text-gray-400">You are not logged in. Please join a room to chat.</div>
+				}
+            </div>
+
+            <div class="flex w-full flex-col space-y-6 border-gray-700 bg-gray-800 p-4 lg:w-[20rem]">
+                <!-- Top Section: Star Voting -->
+                <div>
+                    <h3 class="mb-2 text-lg font-semibold text-gray-200">⭐ Vote Players</h3>
+                    <div class="space-y-3">
+                        @foreach(Player player in CurrentRoom?.Players ?? new List<Player>())
+                        {
+                            <div class="flex items-center justify-between rounded-md bg-gray-900 p-2 shadow-sm">
+                                <span class="font-medium text-white">@player.Name</span>
+                                <div class="flex space-x-1">
+                                    @for (int j = 1; j <= 5; j++)
+                                    {
+                                        int currentRating = j;
+                                        <span @onclick="@(() => SetRating(currentRating, CurrentPlayer.PlayerId, player.PlayerId, CurrentRoom.RoomId))"
+                                              class="cursor-pointer text-xl transition hover:scale-110"
+                                              style="color:@(j <= voteManager.GetStar(CurrentRoom.RoomId, CurrentPlayer.PlayerId, player.PlayerId) ? "#FACC15" : "#4B5563")">
+                                            ★
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
 
-
-                <!-- Top Players Table -->
-                <div class="rounded-xl bg-gray-900 p-4 shadow-md">
-                    <h3 class="mb-3 flex items-center gap-2 text-lg font-medium text-gray-100">
-                        🏅 <span>Top 10 Players</span>
-                    </h3>
-
-                    <div class="overflow-hidden rounded-lg border border-gray-700">
-                        <table class="w-full text-left text-sm">
-                            <thead class="bg-gray-800 text-gray-300">
-                                <tr>
-                                    <th class="p-3 font-semibold">Rank</th>
-                                    <th class="p-3 font-semibold">Player</th>
-                                    <th class="p-3 font-semibold">Win %</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-700">
-                                <tr class="transition hover:bg-gray-800">
-                                    <td class="p-3 text-gray-300">1</td>
-                                    <td class="p-3 text-gray-200">HumanHero</td>
-                                    <td class="p-3 font-bold text-green-400">92%</td>
-                                </tr>
-                                <tr class="transition hover:bg-gray-800">
-                                    <td class="p-3 text-gray-300">2</td>
-                                    <td class="p-3 text-gray-200">BotHunterX</td>
-                                    <td class="p-3 font-bold text-green-400">89%</td>
-                                </tr>
-                                <tr class="transition hover:bg-gray-800">
-                                    <td class="p-3 text-gray-300">3</td>
-                                    <td class="p-3 text-gray-200">PlayerZ</td>
-                                    <td class="p-3 font-bold text-green-400">85%</td>
-                                </tr>
-                                <tr class="transition hover:bg-gray-800">
-                                    <td class="p-3 text-gray-300">4</td>
-                                    <td class="p-3 text-gray-200">BotHunterX</td>
-                                    <td class="p-3 font-bold text-green-400">89%</td>
-                                </tr>
-                                <tr class="transition hover:bg-gray-800">
-                                    <td class="p-3 text-gray-300">5</td>
-                                    <td class="p-3 text-gray-200">PlayerZ</td>
-                                    <td class="p-3 font-bold text-green-400">85%</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <!-- Bottom Section: Ranking -->
+                <div class="mt-6">
+                    <h3 class="mb-1 text-lg font-semibold text-gray-200">📊 Player Ranking</h3>
+                    <div class="space-y-3">
+                        @foreach (Player player in CurrentRoom?.Players.OrderByDescending(p => p.CurrentAvgVote).Take(5) ?? new List<Player>())
+                        {
+                            <div class="flex items-center justify-between rounded-md bg-gray-900 p-2">
+                                <span class="font-medium text-white"> @player.Name</span>
+                                <span class="font-semibold text-yellow-300">@player.CurrentAvgVote ★</span>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
+
+        <section class="snap-section flex h-full min-h-[calc(100vh-4.5rem)] snap-start flex-row bg-gray-800">
+            <!-- Chart at Top Taking Max Space -->
+            <div class="flex flex-grow flex-col rounded-b-xl bg-gray-900 p-6">
+                <!-- Chart Title -->
+                <div class="mb-2 flex items-center justify-between text-lg font-medium text-gray-100">
+                    <div class="flex items-center gap-2">
+                        <span>📈</span><span>Humans vs Bots (Live)</span>
+                    </div>
+                    <span class="text-sm text-gray-400 italic">Updating every second</span>
+                </div>
+
+                <!-- Chart Container -->
+                <div class="flex flex-grow items-center justify-center rounded-lg">
+                    @if (Series != null && Series[0].Data.Length >= 4)
+                    {
+                        <MudChart ChartType="ChartType.Line"
+                                  ChartSeries="@Series"
+                                  XAxisLabels="@XAxisLabels"
+                                  ChartOptions="@options"
+                                  Width="1450px"
+                                  Height="530px" />
+                    }
+                    else
+                    {
+                        <div class="text-gray-500">Loading data...</div>
+                    }
+                </div>
+
+                <!-- Custom Legend -->
+                <div class="mt-4 flex justify-center gap-6 text-sm font-medium text-gray-300">
+                    <div class="flex items-center gap-2">
+                        <span class="h-3 w-3 rounded-full" style="background-color: #3B82F6"></span>
+                        <span>Bot Count</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="h-3 w-3 rounded-full" style="background-color: #10B981"></span>
+                        <span>Human Count</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ad Area Below -->
+            
+        </section>
+
+
+        @* <section class="snap-section h-full min-h-[calc(100vh-4.5rem)] snap-start bg-gray-800 p-6">
+            <div class="flex flex-col items-center justify-center gap-6 lg:flex lg:items-stretch lg:gap-6">
+                
+                <!-- 🔸 Top Players Table -->
+                <div class="w-full flex-col lg:mt-0 lg:w-1/2">
+                    <div class="flex flex-grow flex-col rounded-xl bg-gray-900 p-4 shadow-md">
+                        <h3 class="mb-3 flex shrink-0 items-center gap-2 text-lg font-medium text-gray-100">
+                            🏅 <span>Top 10 Players</span>
+                        </h3>
+
+                        <div class="flex-grow overflow-auto rounded-lg border border-gray-700">
+                            <table class="w-full text-left text-sm">
+                                <thead class="sticky top-0 bg-gray-800 text-gray-300">
+                                    <tr>
+                                        <th class="p-3 font-semibold">Rank</th>
+                                        <th class="p-3 font-semibold">Player</th>
+                                        <th class="p-3 font-semibold">Win %</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-700">
+                                    <tr class="transition hover:bg-gray-800">
+                                        <td class="p-3 text-gray-300">1</td>
+                                        <td class="p-3 text-gray-200">HumanHero</td>
+                                        <td class="p-3 font-bold text-green-400">92%</td>
+                                    </tr>
+                                    <tr class="transition hover:bg-gray-800">
+                                        <td class="p-3 text-gray-300">2</td>
+                                        <td class="p-3 text-gray-200">BotHunterX</td>
+                                        <td class="p-3 font-bold text-green-400">89%</td>
+                                    </tr>
+                                    <tr class="transition hover:bg-gray-800">
+                                        <td class="p-3 text-gray-300">3</td>
+                                        <td class="p-3 text-gray-200">PlayerZ</td>
+                                        <td class="p-3 font-bold text-green-400">85%</td>
+                                    </tr>
+                                    <tr class="transition hover:bg-gray-800">
+                                        <td class="p-3 text-gray-300">4</td>
+                                        <td class="p-3 text-gray-200">PlayerZ</td>
+                                        <td class="p-3 font-bold text-green-400">85%</td>
+                                    </tr>
+                                    <tr class="transition hover:bg-gray-800">
+                                        <td class="p-3 text-gray-300">5</td>
+                                        <td class="p-3 text-gray-200">PlayerZ</td>
+                                        <td class="p-3 font-bold text-green-400">85%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section> *@
+        
     </div>
 </div>
 
 @code {
+    private HubConnection? hubConnection;
+    private Room? CurrentRoom = null;
+    private Player? CurrentPlayer = null;
+    private string UserName = "No Name";
+    private string messageInput = "";
+    private List<(int PlayerId, string Text)> messages = new();
+    private int remainingSeconds;
+
+    private bool IsModalOpen = false;
+
+    private void OpenModal() => IsModalOpen = true;
+    private void CloseModal() => IsModalOpen = false;
+
+    private async Task HandleNameSubmit(string name)
+    {
+        UserName = name;
+        CurrentPlayer =  playerManager.AddPlayer(new Player(voteManager)
+        {
+            TypeOfPlayer = PlayerType.Human,
+            Name = name
+        });
+        await JoinGroup();
+    }
+
+    #region Chart Declaration
     private ChartOptions options = new ChartOptions();
 
     public List<ChartSeries> Series = new()
     {
-        new ChartSeries { Name = "● Bot Count", Data = Array.Empty<double>()},
+        new ChartSeries { Name = "Bot Count", Data = Array.Empty<double>()},
         new ChartSeries { Name = "Human Count", Data = Array.Empty<double>() }
     };
-
     private List<DateTime> Timestamps = new();
     private string[] XAxisLabels = Array.Empty<string>();
 
@@ -262,25 +323,209 @@
 
     private CancellationTokenSource _cts = new();
     private bool isRunning = false;
+    #endregion
 
     protected override async Task OnInitializedAsync()
     {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/chathub"))
+            .Build();
+
+        // Listen for new messages
+        hubConnection.On<int, string>("ReceiveMessage", async (PlayerId, message) =>
+        {
+            messages.Add((PlayerId, message));
+            await InvokeAsync(StateHasChanged);
+            await ScrollToBottom();
+        });
+
+        await hubConnection.StartAsync();
+
+
+
+        #region Chart Initialization
         _startTime = DateTime.Now;
         options.InterpolationOption = InterpolationOption.EndSlope;
         options.YAxisFormat = "n0";
         options.ChartPalette = new[] { "#38bdf8", "#10b981" };
-        options.ShowLegend = false;
-        options.ShowLegendLabels = false;
-        options.ShowLabels = false;
+        options.LineStrokeWidth = 2;
 
         // Seed with initial points
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 10; i++)
             AddRandomTimePoint();
 
         UpdateLabels();
         isRunning = true;
-        _ = RunSimulation(_cts.Token); // Fire and forget
+        _ = RunSimulation(_cts.Token);
+
+        #endregion
     }
+
+    private void SetRating(int rating,int fromPlayerId, int toPlayerId, int? RoomId)
+    {
+        if(rating < 1 || RoomId == null || fromPlayerId == 0 || toPlayerId == 0)
+            return;
+        voteManager.AddVote(new Vote()
+        {
+			RoomId = RoomId ?? 0,
+            FromPlayerId = fromPlayerId,
+            ToPlayerId = toPlayerId,
+			Star = rating
+        });
+    }
+
+    private void StartTimer()
+    {
+        if(CurrentRoom != null)
+        {
+            CurrentRoom.Start(30);
+        }
+
+    }
+
+    private void OnTimeChanged(int seconds)
+    {
+        remainingSeconds = seconds;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnTimerFinished()
+    {
+        Console.WriteLine("Timer ended!");
+        var topPlayer = CurrentRoom.Players
+        .OrderByDescending(x => x.CurrentAvgVote)
+        .FirstOrDefault();
+
+        if (topPlayer != null && CurrentPlayer.PlayerId == topPlayer.PlayerId && CurrentRoom.Players.Count == 5)
+        {
+            await LeaveGroup();
+        }else if(topPlayer != null && topPlayer.TypeOfPlayer == PlayerType.Bot && CurrentRoom.Players.Count == 5)
+        {
+            roomManager.RemovePlayerFromRoom(CurrentRoom.RoomId, topPlayer.PlayerId);
+            await hubConnection.SendAsync("SendMessageToGroup", CurrentRoom.RoomId + "", 0, $"{topPlayer.Name} left the group.");
+            _ = Task.Run(async () =>
+            {
+                await botManager.AddPlayerOnLeft(CurrentRoom.RoomId);
+            });
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task ScrollToBottom()
+    {
+        await JS.InvokeVoidAsync("scrollToBottom", "chatContainer");
+    }
+
+    private async Task SendMessage()
+    {
+        try
+        {
+            if (hubConnection is null || CurrentRoom is null || CurrentPlayer is null || string.IsNullOrEmpty(messageInput))
+                return;
+
+            if (CurrentPlayer != null && CurrentRoom != null)
+            {
+                await hubConnection.SendAsync("SendMessageToGroup", CurrentRoom.RoomId + "", CurrentPlayer.PlayerId, messageInput);
+            }
+
+            messageInput = "";
+        }catch(Exception e)
+        {
+            messages.Add((0,e.Message));
+        }
+
+    }
+
+    private async Task Logout()
+    {
+        if(CurrentRoom != null)
+        {
+            await LeaveGroup();
+        }
+        if(CurrentPlayer != null)
+        {
+            playerManager.RemovePlayer(CurrentPlayer.PlayerId);
+            CurrentPlayer = null;
+        }
+    }
+
+    private async Task JoinRoom()
+    {
+        if(CurrentPlayer == null)
+        {
+            OpenModal();
+        }
+        else
+        {
+            await JoinGroup();
+        }
+    }
+
+    private async Task JoinGroup()
+    {
+        if (hubConnection is null)
+            return;
+
+        CurrentRoom = roomManager.GetRunningRoom();
+        
+        if (!string.IsNullOrWhiteSpace(UserName) && CurrentPlayer != null && CurrentRoom != null)
+        {
+            CurrentPlayer.RoomId = CurrentRoom.RoomId;
+            CurrentRoom.Players.Add(CurrentPlayer);
+            CurrentRoom.TimeChanged += OnTimeChanged;
+            CurrentRoom.TimerFinished += OnTimerFinished;
+            await hubConnection.SendAsync("JoinGroup", CurrentRoom.RoomId + "");
+            await hubConnection.SendAsync("SendMessageToGroup", CurrentRoom.RoomId+"", 0 , $"{UserName} joined the group.");
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("initScrollSnapOnScroll");
+            await JS.InvokeVoidAsync("registerOnUnload", DotNetObjectReference.Create(this));
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnBrowserUnload()
+    {
+        if (hubConnection != null && CurrentRoom != null && CurrentPlayer != null)
+        {
+            await hubConnection.SendAsync("LeaveGroup", CurrentRoom.RoomId+"");
+            if (CurrentPlayer != null)
+            {
+                await hubConnection.SendAsync("SendMessageToGroup", CurrentRoom.RoomId+"", 0, $"{CurrentPlayer.Name} left the group.");
+            }
+            roomManager.RemovePlayerFromRoom(CurrentRoom.RoomId,CurrentPlayer.PlayerId);
+            playerManager.RemovePlayer(CurrentPlayer.PlayerId);
+            roomManager.RemoveEmptyRoom();
+        }
+    }
+
+    private async Task LeaveGroup()
+    {
+        if (hubConnection != null && CurrentRoom != null && CurrentPlayer != null)
+        {
+            await hubConnection.SendAsync("LeaveGroup", CurrentRoom.RoomId + "");
+            if (CurrentPlayer != null)
+            {
+                await hubConnection.SendAsync("SendMessageToGroup", CurrentRoom.RoomId + "", 0, $"{CurrentPlayer.Name} left the group.");
+            }
+            roomManager.RemovePlayerFromRoom(CurrentRoom.RoomId, CurrentPlayer.PlayerId);
+            roomManager.RemoveEmptyRoom();
+            if(CurrentRoom.Players.Where(x => x.TypeOfPlayer == PlayerType.Human).Count() <= 0)
+            {
+                CurrentRoom = null;
+            }
+            messages.Clear();
+        }
+    }
+
+    
+
+    #region Chart Methods
 
     private async Task RunSimulation(CancellationToken token)
     {
@@ -309,21 +554,12 @@
     {
         int secondsJump = _random.Next(1, 10);
 
-        if (_random.Next(1, 10) % 2 == 1)
-            jump += _random.Next(1, 10);
-        else
-            jump -= _random.Next(1, 5);
-
         DateTime newTime = Timestamps.LastOrDefault(_startTime).AddSeconds(secondsJump);
         Timestamps.Add(newTime);
 
-        double botCount = jump % 2 == 0
-            ? _random.Next(-110, 110) + jump
-            : _random.Next(jump, jump + 10);
+        double botCount = playerManager.getTotalBotCount();
 
-        double humanCount = jump % 2 != 0
-            ? _random.Next(-110, 110) + jump
-            : _random.Next(jump, jump + 10);
+		double humanCount = playerManager.getTotalHumanCount();
 
         Series[0].Data = Series[0].Data.Append(botCount).ToArray();
         Series[1].Data = Series[1].Data.Append(humanCount).ToArray();
@@ -347,7 +583,7 @@
         }
         else
         {
-            int interval = total / 8;
+            int interval = total / 10;
             XAxisLabels = Timestamps.Select((t, i) => (i % interval == 0) ? GetSmartLabel(t) : "").ToArray();
         }
     }
@@ -384,9 +620,7 @@
         _cts.Cancel();
         _cts.Dispose();
     }
+
+    #endregion
 }
-
-
-
-
 
