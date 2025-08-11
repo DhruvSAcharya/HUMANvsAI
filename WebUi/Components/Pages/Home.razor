@@ -32,16 +32,20 @@
             <!-- 🔹 Left Panel: Game List -->
             <div class="flex w-full shrink-0 flex-col border-r-0 border-gray-700 bg-gray-800 p-4 lg:w-[26rem]">
                 <!-- 🔸 Chat Panel -->
-                <div>
+                <di class="text-md p-2 font-semibold text-cyan-400">
                     @if (CurrentRoom != null)
                     {
-                        <p>Time Left: @((int)CurrentRoom._remainingSeconds)</p>
+                        <div class="flex justify-between">
+                            <span>⏳ Time Left: <span class="text-red-600">@((int)CurrentRoom._remainingSeconds)</span></span>
+                            <span>🎯 Round: <span class="text-white">@CurrentRoom.RoundNumber</span></span>
+                        </div>
+                        
                     }
                     else
                     {
                         <p>Round Time: 90 Seconds</p>
                     }
-                </div>
+                </di>
                 <h2 class="mb-4 shrink-0 text-xl font-semibold text-cyan-400">🕹 Ongoing Games</h2>
 
                 <!-- Scrollable Game List -->
@@ -402,6 +406,7 @@
         }else if(topPlayer != null && topPlayer.TypeOfPlayer == PlayerType.Bot && CurrentRoom.Players.Count == 5)
         {
             roomManager.RemovePlayerFromRoom(CurrentRoom.RoomId, topPlayer.PlayerId);
+            playerManager.RemovePlayer(topPlayer.PlayerId);
             await hubConnection.SendAsync("SendMessageToGroup", CurrentRoom.RoomId + "", 0, $"{topPlayer.Name} left the group.");
             _ = Task.Run(async () =>
             {

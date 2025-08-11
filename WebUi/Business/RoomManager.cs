@@ -53,6 +53,7 @@ namespace WebUi.Business
                 if (room.Players.Count == 4)
                 {
                     room.Start(30);
+                    room.RoundNumber++;
                 }
                 return room;
             }
