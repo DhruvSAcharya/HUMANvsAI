@@ -10,6 +10,7 @@ builder.Services.AddSingleton<RoomManager>();
 builder.Services.AddSingleton<PlayerManager>();
 builder.Services.AddSingleton<VoteManager>();
 builder.Services.AddSingleton<BotManager>();
+builder.Services.AddSingleton<APIResourceManager>();
 
 var app = builder.Build();
 

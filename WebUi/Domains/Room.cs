@@ -11,6 +11,7 @@ namespace WebUi.Domains
             RoomTimer = new Timer(1000);
             RoomTimer.AutoReset = true;
             RoomTimer.Elapsed += OnTimerElapsed;
+            RoundNumber = 0;
         }
         public int RoomId { get; set; }
         public List<Player> Players { get; set; }
@@ -54,7 +55,7 @@ namespace WebUi.Domains
                 return "50% Bots / 50% Human";
         }
 
-        public void Start(int seconds)
+        public void StartTimer(int seconds)
         {
             _remainingSeconds = seconds;
             RoomTimer.Start();

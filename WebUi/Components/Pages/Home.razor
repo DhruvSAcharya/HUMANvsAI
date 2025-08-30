@@ -43,7 +43,7 @@
                     }
                     else
                     {
-                        <p>Round Time: 90 Seconds</p>
+                        <p>Round Time: @Constants.RoomTimerDuration Seconds</p>
                     }
                 </di>
                 <h2 class="mb-4 shrink-0 text-xl font-semibold text-cyan-400">🕹 Ongoing Games</h2>
@@ -113,7 +113,7 @@
 					}
                     @foreach(var msg in messages)
                     {
-                        if(msg.PlayerId == CurrentPlayer?.PlayerId)
+                        if(msg.PlayerName == CurrentPlayer?.Name)
                         {
                             <div class="w-fit max-w-lg self-end rounded-lg rounded-br-none bg-cyan-600 p-3 text-white shadow-md">
                                 <strong>You:</strong> <span class="font-normal">@msg.Text</span>
@@ -122,7 +122,7 @@
                         else
                         {
                             <div class="w-fit max-w-lg self-start rounded-lg rounded-bl-none border border-gray-600 bg-gray-700 p-3 shadow-md">
-                                <strong>@playerManager.GetPlayerName(msg.PlayerId):</strong> <span class="font-normal text-gray-200">@msg.Text</span>
+                                <strong>@msg.PlayerName: </strong> <span class="font-normal text-gray-200">@msg.Text</span>
                             </div>
                         }
                     }
@@ -291,7 +291,7 @@
     private Player? CurrentPlayer = null;
     private string UserName = "No Name";
     private string messageInput = "";
-    private List<(int PlayerId, string Text)> messages = new();
+    private List<(string PlayerName, string Text)> messages = new();
     private int remainingSeconds;
 
     private bool IsModalOpen = false;
@@ -338,7 +338,7 @@
         // Listen for new messages
         hubConnection.On<int, string>("ReceiveMessage", async (PlayerId, message) =>
         {
-            messages.Add((PlayerId, message));
+            messages.Add((playerManager.GetPlayerName(PlayerId), message));
             await InvokeAsync(StateHasChanged);
             await ScrollToBottom();
         });
@@ -382,9 +382,8 @@
     {
         if(CurrentRoom != null)
         {
-            CurrentRoom.Start(30);
+            CurrentRoom.StartTimer(Constants.RoomTimerDuration);
         }
-
     }
 
     private void OnTimeChanged(int seconds)
@@ -400,14 +399,30 @@
         .OrderByDescending(x => x.CurrentAvgVote)
         .FirstOrDefault();
 
+        if (hubConnection != null && hubConnection?.State != HubConnectionState.Connected)
+        {
+            hubConnection.Reconnected += async (connectionId) =>
+            {
+                if (CurrentRoom != null && CurrentPlayer != null)
+                {
+                    await hubConnection.SendAsync("JoinGroup", CurrentRoom.RoomId + "");
+                }
+            };
+        }
+        else
+        {
+            Console.WriteLine("Hub connection is null or not connected in Timer Finished.");
+        }
+
         if (topPlayer != null && CurrentPlayer.PlayerId == topPlayer.PlayerId && CurrentRoom.Players.Count == 5)
         {
-            await LeaveGroup();
-        }else if(topPlayer != null && topPlayer.TypeOfPlayer == PlayerType.Bot && CurrentRoom.Players.Count == 5)
+            await LeaveGroup(true);
+        }
+        else if(topPlayer != null && topPlayer.TypeOfPlayer == PlayerType.Bot && CurrentRoom.Players.Count == 5)
         {
             roomManager.RemovePlayerFromRoom(CurrentRoom.RoomId, topPlayer.PlayerId);
             playerManager.RemovePlayer(topPlayer.PlayerId);
-            await hubConnection.SendAsync("SendMessageToGroup", CurrentRoom.RoomId + "", 0, $"{topPlayer.Name} left the group.");
+            await hubConnection.SendAsync("SendMessageToGroup", CurrentRoom.RoomId + "", 0, $"{topPlayer.Name} got eliminated.");
             _ = Task.Run(async () =>
             {
                 await botManager.AddPlayerOnLeft(CurrentRoom.RoomId);
@@ -425,6 +440,21 @@
     {
         try
         {
+            if (CurrentRoom != null || CurrentPlayer != null && hubConnection != null && hubConnection?.State != HubConnectionState.Connected)
+            {
+                hubConnection.Reconnected += async (connectionId) =>
+                {
+                    if (CurrentRoom != null && CurrentPlayer != null)
+                    {
+                        await hubConnection.SendAsync("JoinGroup", CurrentRoom.RoomId + "");
+                    }
+                };
+            }
+            else
+            {
+                Console.WriteLine("Hub connection is null or not connected from sendMessage().");
+            }
+
             if (hubConnection is null || CurrentRoom is null || CurrentPlayer is null || string.IsNullOrEmpty(messageInput))
                 return;
 
@@ -436,9 +466,8 @@
             messageInput = "";
         }catch(Exception e)
         {
-            messages.Add((0,e.Message));
+            messages.Add(("System",e.Message));
         }
-
     }
 
     private async Task Logout()
@@ -472,7 +501,7 @@
             return;
 
         CurrentRoom = roomManager.GetRunningRoom();
-        
+
         if (!string.IsNullOrWhiteSpace(UserName) && CurrentPlayer != null && CurrentRoom != null)
         {
             CurrentPlayer.RoomId = CurrentRoom.RoomId;
@@ -509,23 +538,43 @@
         }
     }
 
-    private async Task LeaveGroup()
+    private async Task LeaveGroup(bool isEliminated = false)
     {
-        if (hubConnection != null && CurrentRoom != null && CurrentPlayer != null)
+        try
         {
-            await hubConnection.SendAsync("LeaveGroup", CurrentRoom.RoomId + "");
-            if (CurrentPlayer != null)
+            if (hubConnection != null && CurrentRoom != null && CurrentPlayer != null && hubConnection?.State == HubConnectionState.Connected)
             {
-                await hubConnection.SendAsync("SendMessageToGroup", CurrentRoom.RoomId + "", 0, $"{CurrentPlayer.Name} left the group.");
-            }
-            roomManager.RemovePlayerFromRoom(CurrentRoom.RoomId, CurrentPlayer.PlayerId);
-            roomManager.RemoveEmptyRoom();
-            if(CurrentRoom.Players.Where(x => x.TypeOfPlayer == PlayerType.Human).Count() <= 0)
-            {
+                await hubConnection.SendAsync("LeaveGroup", CurrentRoom.RoomId + "");
+                if (CurrentPlayer != null && hubConnection?.State == HubConnectionState.Connected)
+                {
+                    if (isEliminated)
+                    {
+                        await hubConnection.SendAsync("SendMessageToGroup", CurrentRoom.RoomId + "", 0, $"{CurrentPlayer.Name} got eliminated.");
+                    }
+                    else
+                    {
+
+                        await hubConnection.SendAsync("SendMessageToGroup", CurrentRoom.RoomId + "", 0, $"{CurrentPlayer.Name} left the group.");
+                    }
+                }
+                roomManager.RemovePlayerFromRoom(CurrentRoom.RoomId, CurrentPlayer.PlayerId);
+                roomManager.RemoveEmptyRoom();
+                var roomId = CurrentRoom?.RoomId ?? 0; 
+                _ = Task.Run(async () =>
+                {
+                    if (roomId > 0)
+                    {
+                        await botManager.AddPlayerOnLeft(roomId);
+                    }
+                });
                 CurrentRoom = null;
+                messages.Clear();
             }
-            messages.Clear();
+        }catch(Exception e)
+        {
+            messages.Add(("System", e.Message));
         }
+        
     }
 
     

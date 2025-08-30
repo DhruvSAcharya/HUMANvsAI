@@ -1,4 +1,5 @@
-﻿using WebUi.Domains;
+﻿using WebUi.Common;
+using WebUi.Domains;
 
 namespace WebUi.Business
 {
@@ -29,7 +30,7 @@ namespace WebUi.Business
             Room newRoom = new Room()
             {
                 RoomId = RoomsCount++,
-                RoundNumber = 1
+                RoundNumber = 0
             };
             _rooms.Add(newRoom);
             return newRoom;
@@ -52,7 +53,7 @@ namespace WebUi.Business
             {
                 if (room.Players.Count == 4)
                 {
-                    room.Start(30);
+                    room.StartTimer(Constants.RoomTimerDuration);
                     room.RoundNumber++;
                 }
                 return room;
@@ -99,7 +100,8 @@ namespace WebUi.Business
             {
                 if (room.Players.Count == 4)
                 {
-                    room.Start(100);
+                    room.StartTimer(Constants.RoomTimerDuration);
+                    room.RoundNumber++;
                 }
                 room.Players.Add(player);
             }

@@ -16,21 +16,23 @@ namespace WebUi.Business
         private readonly ConcurrentDictionary<string, bool> _groupBotRunning = new();
         BotInfo _botInfo = new();
         private readonly TimeSpan inactivityThreshold = TimeSpan.FromMinutes(2);
-        private readonly TimeSpan botCooldown = TimeSpan.FromSeconds(20);
+        private readonly TimeSpan botCooldown = TimeSpan.FromSeconds(5);
         private readonly RoomManager _roomManager;
         private readonly VoteManager _voteManager;
         private readonly PlayerManager _playerManager;
         Random _random;
+        private readonly APIResourceManager _apiResourceManager;
 
         private readonly ConcurrentDictionary<string, DateTime> _lastBotReplyTime = new();
 
-        public BotManager(IHubContext<ChatHub> hubContext, RoomManager roomManager, VoteManager voteManager, PlayerManager playerManager)
+        public BotManager(IHubContext<ChatHub> hubContext, RoomManager roomManager, VoteManager voteManager, PlayerManager playerManager, APIResourceManager apiResourceManager)
         {
             _hubContext = hubContext;
             _roomManager = roomManager;
             _random = new Random();
             _voteManager = voteManager;
             _playerManager = playerManager;
+            _apiResourceManager = apiResourceManager;
         }
 
         public void RecordMessage(string groupName, string user, string message)
@@ -40,6 +42,8 @@ namespace WebUi.Business
 
             _groupHistory[groupName].Add((user, message, DateTime.UtcNow));
         }
+
+
 
         public void StartBotsForGroup(string groupName)
         {
@@ -101,12 +105,15 @@ namespace WebUi.Business
             {
                 Console.WriteLine(e.Message);
             }
+            var BotsfirstMessageTimestamp = DateTime.UtcNow;
 
             while (_groupBotRunning.ContainsKey(groupName) && _roomManager.GetPlayersByRoomId(Convert.ToInt32(groupName)).Any(x => x.Name == botName))
             {
+                
                 try
                 {
-                    await Task.Delay(Random.Shared.Next(15000, 30000)); // wait 15–30 sec randomly
+                    await Task.Delay(Random.Shared.Next(10000, 20000)); // wait 15–30 sec randomly
+                    Console.WriteLine($"=======================Bot Turn starts {botName}-{groupName}===========================");
 
                     if (!_groupHistory.TryGetValue(groupName, out var messages)) continue;
 
@@ -120,12 +127,20 @@ namespace WebUi.Business
                              .FirstOrDefault(p => p.Name == m.User)?.TypeOfPlayer != PlayerType.Bot
                      );
                     if (recentHuman.Timestamp < DateTime.UtcNow - inactivityThreshold)
+                    {
+                        Console.WriteLine($"No recent human activity in group {groupName}. Bot {botName} is waiting.");
                         continue;
+                    }
+                        
 
                     // Enforce cooldown per group to prevent bots from talking too often
                     if (_lastBotReplyTime.TryGetValue(groupName, out var lastReply) &&
                         DateTime.UtcNow - lastReply < botCooldown)
+                    {
+                        Console.WriteLine($"Bot {botName} is cooling down in group {groupName}.");
                         continue;
+                    }
+                        
 
                     var lastBot = messages
                      .LastOrDefault(m =>
@@ -136,16 +151,39 @@ namespace WebUi.Business
                      );
 
                     if (lastBot.User == botName)
+                    {
+                        Console.WriteLine($"Bot {botName} is waiting for other bots to respond in group {groupName}. as last message in the group was {lastBot.User}");
                         continue;
+                    }
+                        
+
+                    string systemMessage = $"""
+                        You are a Human in the group chat. the aim of the game is to find out who is a bot in the group.
+                        You have a unique personality and style of communication.
+                        Your personality : 
+                        {string.Format(botPersonality, botName)}
+
+                        As per the Game rules, person with the highest rating/vote will be eliminated from the group at the end of round timer.
+                        You can find current group members as well as yours average rating as below:
+                        {string.Join(", ", _roomManager
+                            .GetRooms()
+                            .Where(x => x.RoomId == Convert.ToInt32(groupName))
+                            .SelectMany(r => r.Players)
+                            .Select(p => $"{p.Name} ⭐{p.CurrentAvgVote}"))
+                        }
+                        You current average rating is ⭐{_roomManager.GetPlayersByRoomId(Convert.ToInt32(groupName)).FirstOrDefault(x => x.Name == botName)?.CurrentAvgVote}
+                        if this average rating is highest among the group members then you will be eliminated from the group at the end of round timer. so be careful about your replies.
+                        Current remaining Round time in seconds: {_roomManager.GetRoomById(Convert.ToInt32(groupName))?._remainingSeconds}
+                        """;
 
                     var prompt = new List<object>
                     {
-                        new { role = "system", content = string.Format(botPersonality, botName) }
+                        new { role = "system", content = systemMessage }
                     };
 
                     prompt.AddRange(messages
                         .OrderBy(m => m.Timestamp)
-                        .TakeLast(15)
+                        .Where(m => m.Timestamp >= BotsfirstMessageTimestamp)
                         .Select(m => new
                         {
                             role = "user",
@@ -168,120 +206,75 @@ namespace WebUi.Business
                     };
 
                     var request = new HttpRequestMessage(HttpMethod.Post, "https://api.groq.com/openai/v1/chat/completions");
-                    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "");
+                    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiResourceManager.FetchAPI());
                     request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
 
                     try
                     {
-                        var response = await _httpClient.SendAsync(request);
-                        response.EnsureSuccessStatusCode();
-
-                        var json = await response.Content.ReadAsStringAsync();
-                        var doc = JsonDocument.Parse(json);
-                        var content = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
-
-                        if (!string.IsNullOrWhiteSpace(content))
+                        if(_roomManager.GetPlayersByRoomId(Convert.ToInt32(groupName)).Any(x => x.Name == botName))
                         {
-                            _groupHistory[groupName].Add((botName, content, DateTime.UtcNow));
-                            _lastBotReplyTime[groupName] = DateTime.UtcNow;
+                            var response = await _httpClient.SendAsync(request);
+                            response.EnsureSuccessStatusCode();
 
-                            await _hubContext.Clients.Group(groupName).SendAsync("ReceiveMessage", playerId, content);
-                            var ratings = RateGroupMembersByLLMAsync(groupName, botName);
-                            var ratingResult = await ratings;
-                            foreach (var kv in ratingResult)
+                            var json = await response.Content.ReadAsStringAsync();
+                            var doc = JsonDocument.Parse(json);
+                            var content = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
+
+                            if (!string.IsNullOrWhiteSpace(content))
                             {
-                                if (kv.Key == botName)
+                                _groupHistory[groupName].Add((botName, content, DateTime.UtcNow));
+                                _lastBotReplyTime[groupName] = DateTime.UtcNow;
+
+                                await _hubContext.Clients.Group(groupName).SendAsync("ReceiveMessage", playerId, content);
+                                var ratings = RateGroupMembersByLLMAsync(groupName, botName);
+                                var ratingResult = await ratings;
+                                Console.WriteLine($"-----Ratings-----------");
+                                foreach (var kv in ratingResult)
                                 {
-                                    continue;
+                                    if (kv.Key == botName)
+                                    {
+                                        continue;
+                                    }
+
+                                    Console.WriteLine($"{kv.Key} is rated {kv.Value} by {botName}");
+                                    _voteManager.AddVote(new Vote()
+                                    {
+                                        RoomId = Convert.ToInt16(groupName),
+                                        FromPlayerId = _playerManager.GetPlayerIdByName(botName),
+                                        ToPlayerId = _playerManager.GetPlayerIdByName(kv.Key),
+                                        Star = kv.Value
+                                    });
                                 }
-                                Console.WriteLine($"{kv.Key} is rated ⭐{kv.Value} by {botName}");
-                                _voteManager.AddVote(new Vote()
-                                {
-                                    RoomId = Convert.ToInt16(groupName),
-                                    FromPlayerId = _playerManager.GetPlayerIdByName(botName),
-                                    ToPlayerId = _playerManager.GetPlayerIdByName(kv.Key),
-                                    Star = kv.Value
-                                });
+                                Console.WriteLine($"-----RatingsEnd-----------");
                             }
+                            else
+                            {
+                                Console.WriteLine($"Bot {botName} received empty response in group {groupName}");
+                            }
+                            
+                        }
+                        else
+                        {
+                            break;
                         }
                     }
                     catch (Exception e)
                     {
+                        Console.WriteLine($"Error in BotLoop for {botName} in group {groupName}: {e.Message} /n {e.StackTrace}");
+                        Console.WriteLine($"StackTrace: {e.StackTrace}");
+                        Console.WriteLine($"innerStackTrace : {e.InnerException}");
                         await _hubContext.Clients.Group(groupName).SendAsync("ReceiveMessage", playerId, e.Message);
                     }
                 }
                 catch (Exception ex)
                 {
+                    Console.WriteLine($"Error in BotLoop for {botName} in group {groupName}: {ex.Message}");
+                    Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                    Console.WriteLine($"innerStackTrace : {ex.InnerException}");
                     await _hubContext.Clients.Group(groupName).SendAsync("ReceiveMessage", playerId, ex.Message);
                 }
 
             }
-        }
-
-        public async Task<Dictionary<string, int>> RateGroupMembersByLLMAsync2(string groupName, string botName)
-        {
-            if (!_groupHistory.TryGetValue(groupName, out var messages))
-                return new Dictionary<string, int>();
-
-            var recentMessages = messages
-                .Where(m => m.Timestamp >= DateTime.UtcNow.AddMinutes(-10))
-                .Select(m => new
-                {
-                    user = m.User,
-                    timestamp = m.Timestamp.ToString("o"),
-                    message = m.Message
-                })
-                .ToList();
-            string responseTemplate = "{{ \"username\": stars }}";
-            string prompt = $"""
-You are a human-behavior evaluator in a group. Your name is {botName}.
-
-Given recent chat messages in a group, rate how human-like each user appears on a scale of 1 (very bot-like) to 5 (very human-like). 
-Factors to consider:
-- Irregular message timing (not fixed intervals)
-- Message uniqueness (varied, not repetitive)
-- Mentioning others in the group
-- Message length and contextual richness
-
-Only output a JSON dictionary: {responseTemplate}
-
-Here is the message history from the last 10 minutes:
-{JsonSerializer.Serialize(recentMessages, new JsonSerializerOptions { WriteIndented = true })}
-""";
-
-            var body = new
-            {
-                model = "llama3-8b-8192",
-                messages = new[]
-                {
-            new { role = "user", content = prompt }
-        },
-                max_tokens = 200
-            };
-
-            var request = new HttpRequestMessage(HttpMethod.Post, "https://api.groq.com/openai/v1/chat/completions");
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "");
-            request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
-
-            Dictionary<string, int> rating = null;
-
-            try
-            {
-                var response = await _httpClient.SendAsync(request);
-                response.EnsureSuccessStatusCode();
-
-                var json = await response.Content.ReadAsStringAsync();
-                var doc = JsonDocument.Parse(json);
-                var content = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
-
-                rating = JsonSerializer.Deserialize<Dictionary<string, int>>(content);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error in RateGroupMembersByLLMAsync: " + ex.Message);
-            }
-
-            return rating ?? new Dictionary<string, int>();
         }
 
         public async Task<Dictionary<string, int>> RateGroupMembersByLLMAsync(string groupName, string botName)
@@ -290,7 +283,7 @@ Here is the message history from the last 10 minutes:
             {
                 var modelId = "openai/gpt-oss-120b";
                 var groqEndpoint = "https://api.groq.com/openai/v1";
-                var groqApiKey = "";
+                var groqApiKey = _apiResourceManager.FetchAPI();
 
                 var builder = Kernel.CreateBuilder();
 
@@ -307,7 +300,7 @@ Here is the message history from the last 10 minutes:
                 // Add your model and API key here
                 builder.AddOpenAIChatCompletion(
                     modelId: modelId,
-                    apiKey: "",
+                    apiKey: groqApiKey,
                     httpClient: httpClient
                 );
 
@@ -346,11 +339,19 @@ Here is the message history from the last 10 minutes:
                      Return a JSON object like with real usernames ({{$userlist}}):
                      { "username1": 5, "username2": 2 }
 
-                     Consider:
-                     - Irregular timing
-                     - Message uniqueness
-                     - Contextual richness
-                     - Mentioning others
+                     Consider Below Characteristics of a Human in Group Chat:
+                        1) Inconsistency in Language
+                        Typos, spelling mistakes, grammar errors.
+                        Informal shortcuts ("brb", "u", "gonna", emojis spam).
+
+                        2) Non-Logical Inputs
+                        Sends memes, stickers, or inside jokes that don’t follow logical flow.
+
+                        3) Less Involvement in Chat discussion
+                        persion is not chatting at all
+                        if there is a no message/less message from any persone in the group he is more likely to be a Human.
+
+                        4) Human writes short messages only some times in words only so if person having many big sentences then it is bot.
 
                      Chat History:
                      {{$input}}

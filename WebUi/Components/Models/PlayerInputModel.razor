@@ -7,6 +7,8 @@
     private string Name { get; set; } = string.Empty;
     private bool ShowValidation { get; set; } = false;
     private bool ShowValidationNameExist { get; set; } = false;
+    private bool RuleCheckbox { get; set; } = false;
+    private bool RuleCheckboxValidation { get; set; } = false;
 
     private async Task SubmitAsync()
     {
@@ -15,13 +17,34 @@
             ShowValidation = true;
             return;
         }
-
-        if (ShowValidationNameExist)
+        else
         {
+            ShowValidation = false;
+        }
+
+        if (playerManager.CheckIfPlayerNameExists(Name))
+        {
+            ShowValidationNameExist = true;
             return;
+        }
+        else
+        {
+            ShowValidationNameExist = false;
+        }
+
+        if (!RuleCheckbox)
+        {
+            RuleCheckboxValidation = true;
+            return;
+        }
+        else
+        {
+            RuleCheckboxValidation = false;
         }
 
         ShowValidation = false;
+        ShowValidationNameExist = false;
+        RuleCheckboxValidation = false;
         await OnSubmit.InvokeAsync(Name);
         await OnClose.InvokeAsync();
         Name = string.Empty;
@@ -33,11 +56,6 @@
         ShowValidation = false;
         ShowValidationNameExist = false;
         await OnClose.InvokeAsync();
-    }
-    private void NameChanged(ChangeEventArgs e)
-    {
-        Name = e.Value?.ToString() ?? string.Empty;
-        ShowValidationNameExist = playerManager.CheckIfPlayerNameExists(Name);
     }
 }
 
@@ -58,7 +76,6 @@
 
             <!-- Input -->
             <input @bind="Name"
-                    @oninput="NameChanged"
                    type="text"
                    placeholder="Your Name"
                    class="placeholder-gray-400 w-full rounded border border-gray-500 bg-gray-700 px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none" />
@@ -75,6 +92,33 @@
                     This name already exists. Please choose another.
                 </p>
 			}
+
+            <div class="mt-2">
+                <h2 class="mb-2 text-lg font-semibold text-white">🎮 How to Play</h2>
+                <ul class="list-inside list-disc space-y-1 text-sm text-gray-300">
+                    <li>The objective is to <strong>find and eliminate the bot</strong> among the players.</li>
+                    <li>Use the <strong>chat</strong> to talk with other players and gather clues.</li>
+                    <li>If you suspect someone is a bot, <strong>give them a higher star rating</strong>.</li>
+                    <li>At the end of the round timer, the player with the <strong>highest star rating</strong> will be eliminated.</li>
+                    <li>The game continues until all bots are eliminated or only bots remain.</li>
+                    <li>Do not share personal information — keep it game-related.</li>
+                    <li>Be strategic! Bots can act human, and humans can try to trick you.</li>
+                </ul>
+
+                <!-- Checkbox -->
+                <div class="mt-3 flex items-center space-x-2">
+                    <InputCheckbox @bind-Value="RuleCheckbox" class="form-checkbox h-4 w-4 text-blue-600" />
+                    <label class="text-sm text-gray-300">I understand and agree to the game rules</label>
+                </div>
+
+                @if (RuleCheckboxValidation)
+                {
+                    <p class="mt-1 text-sm font-normal text-red-500">
+                        You must confirm that you understand the rules before continuing.
+                    </p>
+                }
+            </div>
+
 
             <!-- Action Buttons -->
             <div class="mt-4 flex justify-end gap-2">
