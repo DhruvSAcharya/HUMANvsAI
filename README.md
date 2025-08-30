@@ -3,6 +3,12 @@
 ## Overview
 Find the Bot is a multiplayer social deduction game built with Blazor (.NET 8). Players join a chat room and interact to identify which participants are bots controlled by AI. The bots use LLMs (Large Language Models) to mimic human behavior, making the challenge engaging and unpredictable.
 
+## Live URL(it may or may not work)
+URL : https://humani.simplecode.tech/
+## Screen short
+<img width="1919" height="942" alt="image" src="https://github.com/user-attachments/assets/db560271-3533-4f37-87b5-3a5c8fcac6e4" />
+
+
 ## Features
 - Real-time multiplayer chat using SignalR
 - AI bots powered by LLMs (Groq/OpenAI)
