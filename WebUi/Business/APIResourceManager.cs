@@ -5,10 +5,15 @@
         private readonly List<string> _resources;
         private int _currentIndex = -1;
 
-        public APIResourceManager()
+        public APIResourceManager(IConfiguration configuration)
         {
-            _resources = new List<string> { "",
-                "" };
+            var apiKeys = configuration["AI_API_KEYS"];
+
+            _resources = string.IsNullOrWhiteSpace(apiKeys)
+                ? new List<string>()
+                : apiKeys
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .ToList();
         }
 
         public string FetchAPI()
