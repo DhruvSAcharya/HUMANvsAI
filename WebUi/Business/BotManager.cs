@@ -1,10 +1,8 @@
 using System.Collections.Concurrent;
-using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.AI;
 using OpenAI;
-using WebUi.Components.Pages;
 
 using WebUi.Domains;
 
@@ -209,7 +207,7 @@ namespace WebUi.Business
 
                             chatMessages.Add(new ChatMessage(ChatRole.User, $"{botName}, what is your reply?"));
 
-                            var response = await chatClient.GetResponseAsync(chatMessages, new ChatOptions { MaxOutputTokens = 50 });
+                            var response = await chatClient.GetResponseAsync(chatMessages, new ChatOptions { MaxOutputTokens = 150 });
                             string content = response.Text ?? string.Empty;
 
                             if (!string.IsNullOrWhiteSpace(content))
@@ -253,7 +251,7 @@ namespace WebUi.Business
                     catch (System.ClientModel.ClientResultException ex)
                     {
                         var statusCode = ex.Status;
-                        
+
                         // If we have a status code, the response wasn't purely a network failure, we might be able to read it.
                         Console.WriteLine($"Error in BotLoop for {botName} in group {groupName}: HTTP {statusCode} ({ex.Message})");
                         Console.WriteLine($"Failed URL: {endpointUrl}");
@@ -290,10 +288,10 @@ namespace WebUi.Business
                 // we fall back to a server Groq key to keep rating working; future work can
                 // introduce a Google SK connector.
                 var aiConfig = _apiResourceManager.FetchAPI();
-                
+
                 string modelId = aiConfig.Model;
                 string apiKey = aiConfig.ApiKey;
-                
+
                 // Google AI Studio now offers an OpenAI compatibility layer.
                 // We use this to route Semantic Kernel requests flawlessly to Google.
                 string endpointUrl = aiConfig.Provider == Domains.AIProvider.Groq
@@ -327,7 +325,7 @@ namespace WebUi.Business
                         .SelectMany(r => r.Players)
                         .Select(p => p.Name)
                 );
-                
+
                 string systemPrompt = $$"""
                     You are a human-behavior evaluator in a group Chat. Your name in the group is {{botName}}.
 
@@ -365,7 +363,7 @@ namespace WebUi.Business
 
                 var response = await chatClient.GetResponseAsync(chatMessages, options);
                 var content = response.Text;
-                
+
                 if (string.IsNullOrWhiteSpace(content))
                     return new Dictionary<string, int>();
 

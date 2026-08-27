@@ -133,7 +133,7 @@
                 {
                     <!-- Input Box -->
                     <div class="mt-4 flex shrink-0 items-center space-x-2">
-                        <input type="text" @bind="messageInput" placeholder="Type a message..." class="flex-1 rounded-lg border border-gray-600 bg-gray-800 px-4 py-2 text-white shadow-sm focus:border-cyan-500 focus:outline-none" />
+                        <input type="text" @bind="messageInput" @bind:event="oninput" @onkeydown='@(async e => { if (e.Key == "Enter") await SendMessage(); })' placeholder="Type a message..." class="flex-1 rounded-lg border border-gray-600 bg-gray-800 px-4 py-2 text-white shadow-sm focus:border-cyan-500 focus:outline-none" />
                         <button @onclick="SendMessage" class="rounded-lg bg-cyan-500 px-4 py-2 font-semibold text-white shadow-md transition hover:bg-cyan-600">Send</button>
                     </div>
                 }
