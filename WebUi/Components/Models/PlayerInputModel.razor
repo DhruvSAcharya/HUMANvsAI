@@ -25,7 +25,7 @@
     private bool IsValidating { get; set; } = false;
 
     private static readonly string[] GroqModels = { "groq/compound" };
-    private static readonly string[] GoogleModels = { "gemini-3-flash"};
+    private static readonly string[] GoogleModels = { "gemini-3.5-flash-lite" };
 
     private string[] CurrentModels => SelectedProvider == AIProvider.Groq ? GroqModels : GoogleModels;
     private string GetKeyLink() => SelectedProvider == AIProvider.Groq ? "https://console.groq.com/keys" : "https://aistudio.google.com/app/apikey";
