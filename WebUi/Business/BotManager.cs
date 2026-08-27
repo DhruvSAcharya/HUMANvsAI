@@ -1,9 +1,11 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Connectors.OpenAI;
+using Microsoft.Extensions.AI;
+using OpenAI;
+using WebUi.Components.Pages;
+
 using WebUi.Domains;
 
 namespace WebUi.Business
@@ -109,7 +111,7 @@ namespace WebUi.Business
 
             while (_groupBotRunning.ContainsKey(groupName) && _roomManager.GetPlayersByRoomId(Convert.ToInt32(groupName)).Any(x => x.Name == botName))
             {
-                
+
                 try
                 {
                     await Task.Delay(Random.Shared.Next(10000, 20000)); // wait 15–30 sec randomly
@@ -131,7 +133,7 @@ namespace WebUi.Business
                         Console.WriteLine($"No recent human activity in group {groupName}. Bot {botName} is waiting.");
                         continue;
                     }
-                        
+
 
                     // Enforce cooldown per group to prevent bots from talking too often
                     if (_lastBotReplyTime.TryGetValue(groupName, out var lastReply) &&
@@ -140,7 +142,7 @@ namespace WebUi.Business
                         Console.WriteLine($"Bot {botName} is cooling down in group {groupName}.");
                         continue;
                     }
-                        
+
 
                     var lastBot = messages
                      .LastOrDefault(m =>
@@ -155,7 +157,7 @@ namespace WebUi.Business
                         Console.WriteLine($"Bot {botName} is waiting for other bots to respond in group {groupName}. as last message in the group was {lastBot.User}");
                         continue;
                     }
-                        
+
 
                     string systemMessage = $"""
                         You are a Human in the group chat. the aim of the game is to find out who is a bot in the group.
@@ -169,56 +171,46 @@ namespace WebUi.Business
                             .GetRooms()
                             .Where(x => x.RoomId == Convert.ToInt32(groupName))
                             .SelectMany(r => r.Players)
-                            .Select(p => $"{p.Name} ⭐{p.CurrentAvgVote}"))
-                        }
+                            .Select(p => $"{p.Name} ⭐{p.CurrentAvgVote}"))}
                         You current average rating is ⭐{_roomManager.GetPlayersByRoomId(Convert.ToInt32(groupName)).FirstOrDefault(x => x.Name == botName)?.CurrentAvgVote}
                         if this average rating is highest among the group members then you will be eliminated from the group at the end of round timer. so be careful about your replies.
                         Current remaining Round time in seconds: {_roomManager.GetRoomById(Convert.ToInt32(groupName))?._remainingSeconds}
                         """;
 
-                    var prompt = new List<object>
+                    var aiConfig = _apiResourceManager.FetchAPI();
+
+                    string endpointUrl = aiConfig.Provider == Domains.AIProvider.Groq
+                        ? "https://api.groq.com/openai/v1"
+                        : "https://generativelanguage.googleapis.com/v1beta/openai/";
+
+                    var chatClient = new OpenAI.Chat.ChatClient(aiConfig.Model, new System.ClientModel.ApiKeyCredential(aiConfig.ApiKey), new OpenAIClientOptions
                     {
-                        new { role = "system", content = systemMessage }
-                    };
-
-                    prompt.AddRange(messages
-                        .OrderBy(m => m.Timestamp)
-                        .Where(m => m.Timestamp >= BotsfirstMessageTimestamp)
-                        .Select(m => new
-                        {
-                            role = "user",
-                            content = $"{m.User}: {m.Message}"
-                        }));
-
-                    prompt.Add(new
-                    {
-                        role = "user",
-                        content = $"{botName}, what is your reply?"
-                    });
-
-
-
-                    var body = new
-                    {
-                        model = "llama3-8b-8192",
-                        messages = prompt,
-                        max_tokens = 50
-                    };
-
-                    var request = new HttpRequestMessage(HttpMethod.Post, "https://api.groq.com/openai/v1/chat/completions");
-                    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiResourceManager.FetchAPI());
-                    request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+                        Endpoint = new Uri(endpointUrl)
+                    }).AsIChatClient();
 
                     try
                     {
-                        if(_roomManager.GetPlayersByRoomId(Convert.ToInt32(groupName)).Any(x => x.Name == botName))
+                        if (_roomManager.GetPlayersByRoomId(Convert.ToInt32(groupName)).Any(x => x.Name == botName))
                         {
-                            var response = await _httpClient.SendAsync(request);
-                            response.EnsureSuccessStatusCode();
+                            var chatMessages = new List<ChatMessage>
+                            {
+                                new ChatMessage(ChatRole.System, systemMessage)
+                            };
 
-                            var json = await response.Content.ReadAsStringAsync();
-                            var doc = JsonDocument.Parse(json);
-                            var content = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
+                            var orderedMessages = messages
+                                .OrderBy(m => m.Timestamp)
+                                .Where(m => m.Timestamp >= BotsfirstMessageTimestamp)
+                                .ToList();
+
+                            foreach (var msg in orderedMessages)
+                            {
+                                chatMessages.Add(new ChatMessage(ChatRole.User, $"{msg.User}: {msg.Message}"));
+                            }
+
+                            chatMessages.Add(new ChatMessage(ChatRole.User, $"{botName}, what is your reply?"));
+
+                            var response = await chatClient.GetResponseAsync(chatMessages, new ChatOptions { MaxOutputTokens = 50 });
+                            string content = response.Text ?? string.Empty;
 
                             if (!string.IsNullOrWhiteSpace(content))
                             {
@@ -251,19 +243,30 @@ namespace WebUi.Business
                             {
                                 Console.WriteLine($"Bot {botName} received empty response in group {groupName}");
                             }
-                            
+
                         }
                         else
                         {
                             break;
                         }
                     }
-                    catch (Exception e)
+                    catch (System.ClientModel.ClientResultException ex)
                     {
-                        Console.WriteLine($"Error in BotLoop for {botName} in group {groupName}: {e.Message} /n {e.StackTrace}");
-                        Console.WriteLine($"StackTrace: {e.StackTrace}");
-                        Console.WriteLine($"innerStackTrace : {e.InnerException}");
-                        await _hubContext.Clients.Group(groupName).SendAsync("ReceiveMessage", playerId, e.Message);
+                        var statusCode = ex.Status;
+                        
+                        // If we have a status code, the response wasn't purely a network failure, we might be able to read it.
+                        Console.WriteLine($"Error in BotLoop for {botName} in group {groupName}: HTTP {statusCode} ({ex.Message})");
+                        Console.WriteLine($"Failed URL: {endpointUrl}");
+                        Console.WriteLine($"Provider: {aiConfig.Provider}, Model: {aiConfig.Model}");
+
+                        Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                        Console.WriteLine($"innerStackTrace : {ex.InnerException?.StackTrace}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error in BotLoop for {botName} in group {groupName}: {ex.Message} \n    {ex.TargetSite}");
+                        Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                        Console.WriteLine($"innerStackTrace : {ex.InnerException?.StackTrace}");
                     }
                 }
                 catch (Exception ex)
@@ -281,34 +284,28 @@ namespace WebUi.Business
         {
             try
             {
-                var modelId = "openai/gpt-oss-120b";
-                var groqEndpoint = "https://api.groq.com/openai/v1";
-                var groqApiKey = _apiResourceManager.FetchAPI();
+                // Fetch the next config in round-robin. For Semantic Kernel we always route
+                // through the Groq OpenAI-compat endpoint because SK's AddOpenAIChatCompletion
+                // requires an OpenAI-style API. If the fetched config is for Google AI Studio,
+                // we fall back to a server Groq key to keep rating working; future work can
+                // introduce a Google SK connector.
+                var aiConfig = _apiResourceManager.FetchAPI();
+                
+                string modelId = aiConfig.Model;
+                string apiKey = aiConfig.ApiKey;
+                
+                // Google AI Studio now offers an OpenAI compatibility layer.
+                // We use this to route Semantic Kernel requests flawlessly to Google.
+                string endpointUrl = aiConfig.Provider == Domains.AIProvider.Groq
+                    ? "https://api.groq.com/openai/v1"
+                    : "https://generativelanguage.googleapis.com/v1beta/openai/";
 
-                var builder = Kernel.CreateBuilder();
 
-                var httpClient = new HttpClient
+                var chatClient = new OpenAI.Chat.ChatClient(modelId, new System.ClientModel.ApiKeyCredential(apiKey), new OpenAIClientOptions
                 {
-                    BaseAddress = new Uri(groqEndpoint),
-                    Timeout = TimeSpan.FromMinutes(60)
-                };
+                    Endpoint = new Uri(endpointUrl)
+                }).AsIChatClient();
 
-
-                httpClient.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", groqApiKey);
-
-                // Add your model and API key here
-                builder.AddOpenAIChatCompletion(
-                    modelId: modelId,
-                    apiKey: groqApiKey,
-                    httpClient: httpClient
-                );
-
-                var kernel = builder.Build();
-
-
-
-                // Serialize your recent messages (assuming recentMessages is defined earlier in your code)
                 if (!_groupHistory.TryGetValue(groupName, out var messages))
                     return new Dictionary<string, int>();
 
@@ -330,13 +327,13 @@ namespace WebUi.Business
                         .SelectMany(r => r.Players)
                         .Select(p => p.Name)
                 );
-                var function = kernel.CreateFunctionFromPrompt(
-                promptTemplate: """
-                    You are a human-behavior evaluator in a group Chat. Your name in the group is {{$botName}}.
+                
+                string systemPrompt = $$"""
+                    You are a human-behavior evaluator in a group Chat. Your name in the group is {{botName}}.
 
                      Given recent chat messages in a group Chat, rate how human-like other user appears on a scale of 1 (very bot-like) to 5 (very human-like).
 
-                     Return a JSON object like with real usernames ({{$userlist}}):
+                     Return a JSON object like with real usernames ({{usersList}}):
                      { "username1": 5, "username2": 2 }
 
                      Consider Below Characteristics of a Human in Group Chat:
@@ -352,46 +349,23 @@ namespace WebUi.Business
                         if there is a no message/less message from any persone in the group he is more likely to be a Human.
 
                         4) Human writes short messages only some times in words only so if person having many big sentences then it is bot.
+                 """;
 
-                     Chat History:
-                     {{$input}}
-                 """,
-                    executionSettings: new OpenAIPromptExecutionSettings
-                    {
-                        ModelId = modelId,
-                        ResponseFormat = new Dictionary<string, object>
-                        {
-                            ["type"] = "json_schema",
-                            ["json_schema"] = new Dictionary<string, object>
-                            {
-                                ["name"] = "member_ratings",
-                                ["description"] = "Dictionary mapping usernames to integer ratings",
-                                ["schema"] = new Dictionary<string, object>
-                                {
-                                    ["type"] = "object",
-                                    ["additionalProperties"] = new Dictionary<string, object>
-                                    {
-                                        ["type"] = "integer"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    functionName: "RateHumanBehavior"
-                );
-
-                var arguments = new KernelArguments
+                var chatMessages = new List<ChatMessage>
                 {
-                    ["input"] = inputJson,
-                    ["botName"] = botName,
-                    ["userlist"] = usersList
+                    new ChatMessage(ChatRole.System, systemPrompt),
+                    new ChatMessage(ChatRole.User, $"Chat History:\n{inputJson}")
                 };
 
-                // Get raw content from LLM
-                var rawResponse = await kernel.InvokeAsync(function, arguments);
+                // Request standard JSON format
+                var options = new ChatOptions
+                {
+                    ResponseFormat = ChatResponseFormat.Json
+                };
 
-                // Extract string content
-                var content = rawResponse.GetValue<OpenAIChatMessageContent>()?.Content;
+                var response = await chatClient.GetResponseAsync(chatMessages, options);
+                var content = response.Text;
+                
                 if (string.IsNullOrWhiteSpace(content))
                     return new Dictionary<string, int>();
 

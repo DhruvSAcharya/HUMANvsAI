@@ -6,11 +6,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddHttpClient();
 builder.Services.AddSingleton<RoomManager>();
 builder.Services.AddSingleton<PlayerManager>();
 builder.Services.AddSingleton<VoteManager>();
 builder.Services.AddSingleton<BotManager>();
 builder.Services.AddSingleton<APIResourceManager>();
+builder.Services.AddTransient<AiKeyValidatorService>();
 
 var app = builder.Build();
 

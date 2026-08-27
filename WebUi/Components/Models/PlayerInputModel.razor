@@ -1,4 +1,8 @@
-﻿@inject PlayerManager playerManager
+@inject PlayerManager playerManager
+@inject APIResourceManager apiResourceManager
+@inject AiKeyValidatorService aiKeyValidator
+@using WebUi.Domains
+
 @code {
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
@@ -10,127 +14,248 @@
     private bool RuleCheckbox { get; set; } = false;
     private bool RuleCheckboxValidation { get; set; } = false;
 
+    private AIProvider SelectedProvider { get; set; } = AIProvider.Groq;
+    private string SelectedModel { get; set; } = GroqModels[0];
+    private string ApiKey { get; set; } = string.Empty;
+    private bool ShowApiKey { get; set; } = false;
+
+    private bool ShowApiKeyEmpty { get; set; } = false;
+    private bool ShowApiKeyDuplicate { get; set; } = false;
+    private bool ShowApiKeyInvalid { get; set; } = false;
+    private bool IsValidating { get; set; } = false;
+
+    private static readonly string[] GroqModels = { "groq/compound" };
+    private static readonly string[] GoogleModels = { "gemini-3-flash"};
+
+    private string[] CurrentModels => SelectedProvider == AIProvider.Groq ? GroqModels : GoogleModels;
+    private string GetKeyLink() => SelectedProvider == AIProvider.Groq ? "https://console.groq.com/keys" : "https://aistudio.google.com/app/apikey";
+    private string GetProviderName() => SelectedProvider == AIProvider.Groq ? "Groq" : "Google AI Studio";
+
+    private void OnProviderChanged(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<AIProvider>(e.Value?.ToString(), out var provider))
+        {
+            SelectedProvider = provider;
+            SelectedModel = CurrentModels[0];
+        }
+    }
+
     private async Task SubmitAsync()
     {
-        if (string.IsNullOrWhiteSpace(Name))
-        {
-            ShowValidation = true;
-            return;
-        }
-        else
-        {
-            ShowValidation = false;
-        }
+        ShowValidation = ShowValidationNameExist = RuleCheckboxValidation = false;
+        ShowApiKeyEmpty = ShowApiKeyDuplicate = ShowApiKeyInvalid = false;
 
-        if (playerManager.CheckIfPlayerNameExists(Name))
-        {
-            ShowValidationNameExist = true;
-            return;
-        }
-        else
-        {
-            ShowValidationNameExist = false;
-        }
+        if (string.IsNullOrWhiteSpace(Name)) { ShowValidation = true; return; }
+        if (playerManager.CheckIfPlayerNameExists(Name)) { ShowValidationNameExist = true; return; }
+        if (!RuleCheckbox) { RuleCheckboxValidation = true; return; }
+        if (string.IsNullOrWhiteSpace(ApiKey)) { ShowApiKeyEmpty = true; return; }
+        if (apiResourceManager.IsKeyAlreadyRegistered(ApiKey)) { ShowApiKeyDuplicate = true; return; }
 
-        if (!RuleCheckbox)
-        {
-            RuleCheckboxValidation = true;
-            return;
-        }
-        else
-        {
-            RuleCheckboxValidation = false;
-        }
+        IsValidating = true;
+        StateHasChanged();
 
-        ShowValidation = false;
-        ShowValidationNameExist = false;
-        RuleCheckboxValidation = false;
+        var config = new AIProviderConfig(SelectedProvider, ApiKey.Trim(), SelectedModel);
+        var isValid = await aiKeyValidator.ValidateAsync(config);
+
+        IsValidating = false;
+
+        if (!isValid) { ShowApiKeyInvalid = true; return; }
+
+        apiResourceManager.AddUserKey(Name, config);
         await OnSubmit.InvokeAsync(Name);
         await OnClose.InvokeAsync();
         Name = string.Empty;
+        ApiKey = string.Empty;
     }
 
     private async Task CancelAsync()
     {
         Name = string.Empty;
-        ShowValidation = false;
-        ShowValidationNameExist = false;
+        ApiKey = string.Empty;
+        ShowValidation = ShowValidationNameExist = false;
+        ShowApiKeyEmpty = ShowApiKeyDuplicate = ShowApiKeyInvalid = false;
         await OnClose.InvokeAsync();
     }
 }
 
 @if (IsOpen)
 {
-    <!-- Modal Overlay -->
-    <div class="inset-0 z-[1000] flex items-center justify-center"
-         style="position:fixed; top: 0; left: 30%; right: 30%; bottom: 0;">
+    <!-- Backdrop -->
+    <div style="position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.75); overflow-y:auto; display:flex; align-items:flex-start; justify-content:center; padding: 2.5rem 1rem;">
 
-        <!-- Modal Box -->
-        <div class="z-[1001] w-full max-w-md rounded-lg border p-6 shadow-xl"
-             style="background-color: #1f2937;">
+        <!-- Modal Card -->
+        <div style="width:100%; max-width:30rem; background:#111827; border-radius:0.75rem; border:1px solid #374151; box-shadow:0 25px 50px rgba(0,0,0,0.6); overflow:hidden;">
 
-            <!-- Heading -->
-            <h2 class="mb-4 text-xl font-semibold text-white">
-                Enter Your Name
-            </h2>
+            <!-- Top accent bar -->
+            <div style="height:4px; background:linear-gradient(to right,#06b6d4,#3b82f6,#8b5cf6);"></div>
 
-            <!-- Input -->
-            <input @bind="Name"
-                   type="text"
-                   placeholder="Your Name"
-                   class="placeholder-gray-400 w-full rounded border border-gray-500 bg-gray-700 px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <!-- Header -->
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:1.25rem 1.5rem 1rem; border-bottom:1px solid #1f2937;">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <div style="width:2.25rem; height:2.25rem; background:rgba(6,182,212,0.12); border-radius:0.5rem; display:flex; align-items:center; justify-content:center; font-size:1.1rem;">🤖</div>
+                    <div>
+                        <h2 style="font-size:1rem; font-weight:700; color:#f9fafb; margin:0; line-height:1.3;">Join the Game</h2>
+                        <p style="font-size:0.7rem; color:#6b7280; margin:0;">Configure your identity &amp; AI key</p>
+                    </div>
+                </div>
+                <button @onclick="CancelAsync" style="width:2rem; height:2rem; border-radius:0.375rem; border:none; background:transparent; color:#6b7280; cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center; transition:background 0.15s;"
+                        onmouseover="this.style.background='#1f2937';this.style.color='#f9fafb'"
+                        onmouseout="this.style.background='transparent';this.style.color='#6b7280'">✕</button>
+            </div>
 
-            @if (ShowValidation)
-            {
-                <p class="mt-1 text-sm font-normal text-red-500">
-                    Please enter a valid name.
-                </p>
-            }
-            @if (ShowValidationNameExist)
-            {
-                <p class="mt-1 text-sm font-normal text-red-500">
-                    This name already exists. Please choose another.
-                </p>
-			}
+            <div style="padding:1.25rem 1.5rem; display:flex; flex-direction:column; gap:1.1rem;">
 
-            <div class="mt-2">
-                <h2 class="mb-2 text-lg font-semibold text-white">🎮 How to Play</h2>
-                <ul class="list-inside list-disc space-y-1 text-sm text-gray-300">
-                    <li>The objective is to <strong>find and eliminate the bot</strong> among the players.</li>
-                    <li>Use the <strong>chat</strong> to talk with other players and gather clues.</li>
-                    <li>If you suspect someone is a bot, <strong>give them a higher star rating</strong>.</li>
-                    <li>At the end of the round timer, the player with the <strong>highest star rating</strong> will be eliminated.</li>
-                    <li>The game continues until all bots are eliminated or only bots remain.</li>
-                    <li>Do not share personal information — keep it game-related.</li>
-                    <li>Be strategic! Bots can act human, and humans can try to trick you.</li>
-                </ul>
-
-                <!-- Checkbox -->
-                <div class="mt-3 flex items-center space-x-2">
-                    <InputCheckbox @bind-Value="RuleCheckbox" class="form-checkbox h-4 w-4 text-blue-600" />
-                    <label class="text-sm text-gray-300">I understand and agree to the game rules</label>
+                <!-- Display Name -->
+                <div>
+                    <label style="display:block; font-size:0.7rem; font-weight:600; color:#9ca3af; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.4rem;">👤 Display Name</label>
+                    <input @bind="Name" type="text" placeholder="How should others see you?"
+                           style="width:100%; background:#1f2937; border:1px solid @(ShowValidation || ShowValidationNameExist ? "#ef4444" : "#374151"); border-radius:0.5rem; padding:0.6rem 0.9rem; font-size:0.875rem; color:#f9fafb; outline:none; box-sizing:border-box; transition:border-color 0.15s;"
+                           onfocus="this.style.borderColor='#06b6d4'" onblur="this.style.borderColor='@(ShowValidation || ShowValidationNameExist ? "#ef4444" : "#374151")'" />
+                    @if (ShowValidation)
+                    {
+                        <p style="margin:0.35rem 0 0; font-size:0.75rem; color:#f87171; display:flex; align-items:center; gap:0.25rem;">⚠ Please enter a display name.</p>
+                    }
+                    @if (ShowValidationNameExist)
+                    {
+                        <p style="margin:0.35rem 0 0; font-size:0.75rem; color:#f87171; display:flex; align-items:center; gap:0.25rem;">⚠ This name is already taken. Choose another.</p>
+                    }
                 </div>
 
-                @if (RuleCheckboxValidation)
-                {
-                    <p class="mt-1 text-sm font-normal text-red-500">
-                        You must confirm that you understand the rules before continuing.
-                    </p>
-                }
+                <!-- AI Provider -->
+                <div>
+                    <label style="display:block; font-size:0.7rem; font-weight:600; color:#9ca3af; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.5rem;">🧠 AI Provider</label>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+
+                        <!-- Groq tile -->
+                        <label style="display:flex; align-items:center; gap:0.65rem; padding:0.65rem 0.85rem; border-radius:0.5rem; cursor:pointer; border:2px solid @(SelectedProvider == AIProvider.Groq ? "#f97316" : "#374151"); background:@(SelectedProvider == AIProvider.Groq ? "rgba(249,115,22,0.08)" : "#1f2937"); transition:border-color 0.15s;">
+                            <input type="radio" name="provider" value="@AIProvider.Groq"
+                                   checked="@(SelectedProvider == AIProvider.Groq)"
+                                   @onchange="OnProviderChanged" style="display:none;" />
+                            <span style="font-size:1.15rem;">🟠</span>
+                            <div>
+                                <p style="margin:0; font-size:0.8rem; font-weight:600; color:@(SelectedProvider == AIProvider.Groq ? "#fb923c" : "#d1d5db");">Groq</p>
+                                <p style="margin:0; font-size:0.65rem; color:@(SelectedProvider == AIProvider.Groq ? "#fdba74" : "#6b7280");">Fast &amp; free tier</p>
+                            </div>
+                        </label>
+
+                        <!-- Google tile -->
+                        <label style="display:flex; align-items:center; gap:0.65rem; padding:0.65rem 0.85rem; border-radius:0.5rem; cursor:pointer; border:2px solid @(SelectedProvider == AIProvider.GoogleAIStudio ? "#3b82f6" : "#374151"); background:@(SelectedProvider == AIProvider.GoogleAIStudio ? "rgba(59,130,246,0.08)" : "#1f2937"); transition:border-color 0.15s;">
+                            <input type="radio" name="provider" value="@AIProvider.GoogleAIStudio"
+                                   checked="@(SelectedProvider == AIProvider.GoogleAIStudio)"
+                                   @onchange="OnProviderChanged" style="display:none;" />
+                            <span style="font-size:1.15rem;">🔵</span>
+                            <div>
+                                <p style="margin:0; font-size:0.8rem; font-weight:600; color:@(SelectedProvider == AIProvider.GoogleAIStudio ? "#60a5fa" : "#d1d5db");">Google</p>
+                                <p style="margin:0; font-size:0.65rem; color:@(SelectedProvider == AIProvider.GoogleAIStudio ? "#93c5fd" : "#6b7280");">AI Studio</p>
+                            </div>
+                        </label>
+
+                    </div>
+                </div>
+
+                <!-- Model -->
+                <div>
+                    <label style="display:block; font-size:0.7rem; font-weight:600; color:#9ca3af; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.4rem;">⚙️ Model</label>
+                    <select @bind="SelectedModel" style="width:100%; background:#1f2937; border:1px solid #374151; border-radius:0.5rem; padding:0.6rem 0.9rem; font-size:0.875rem; color:#f9fafb; outline:none; box-sizing:border-box; cursor:pointer;">
+                        @foreach (var model in CurrentModels)
+                        {
+                            <option value="@model" style="background:#1f2937; color:#f9fafb;">@model</option>
+                        }
+                    </select>
+                </div>
+
+                <!-- API Key -->
+                <div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.4rem;">
+                        <label style="font-size:0.7rem; font-weight:600; color:#9ca3af; text-transform:uppercase; letter-spacing:0.06em;">🔑 @GetProviderName() API Key</label>
+                        <a href="@GetKeyLink()" target="_blank" style="font-size:0.72rem; color:#22d3ee; text-decoration:none; font-weight:500;">
+                            Get a free key ↗
+                        </a>
+                    </div>
+
+                    <div style="position:relative;">
+                        <input @bind="ApiKey"
+                               type="@(ShowApiKey ? "text" : "password")"
+                               placeholder="Paste your API key here…"
+                               style="width:100%; background:#1f2937; border:1px solid @(ShowApiKeyEmpty || ShowApiKeyDuplicate || ShowApiKeyInvalid ? "#ef4444" : "#374151"); border-radius:0.5rem; padding:0.6rem 2.5rem 0.6rem 0.9rem; font-size:0.8rem; color:#f9fafb; font-family:monospace; letter-spacing:0.04em; outline:none; box-sizing:border-box; transition:border-color 0.15s;"
+                               onfocus="this.style.borderColor='#06b6d4'" onblur="this.style.borderColor='@(ShowApiKeyEmpty || ShowApiKeyDuplicate || ShowApiKeyInvalid ? "#ef4444" : "#374151")'" />
+                        <button type="button" @onclick="() => ShowApiKey = !ShowApiKey"
+                                style="position:absolute; right:0.6rem; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#6b7280; font-size:1rem; padding:0; line-height:1;">
+                            @(ShowApiKey ? "🙈" : "👁️")
+                        </button>
+                    </div>
+
+                    @if (ShowApiKeyEmpty)
+                    {
+                        <p style="margin:0.35rem 0 0; font-size:0.75rem; color:#f87171;">⚠ Please enter your @GetProviderName() API key.</p>
+                    }
+                    @if (ShowApiKeyDuplicate)
+                    {
+                        <p style="margin:0.35rem 0 0; font-size:0.75rem; color:#f87171;">⚠ This API key is already in use by another player.</p>
+                    }
+                    @if (ShowApiKeyInvalid)
+                    {
+                        <p style="margin:0.35rem 0 0; font-size:0.75rem; color:#f87171;">⚠ Invalid key. Verify at <a href="@GetKeyLink()" target="_blank" style="color:#f87171; text-decoration:underline;">@GetProviderName()</a>.</p>
+                    }
+
+                    <!-- Privacy notice -->
+                    <div style="margin-top:0.6rem; background:#1a2332; border:1px solid #1d3957; border-radius:0.5rem; padding:0.6rem 0.75rem; display:flex; align-items:flex-start; gap:0.5rem;">
+                        <span style="color:#4ade80; flex-shrink:0; margin-top:1px;">🔒</span>
+                        <p style="margin:0; font-size:0.72rem; color:#94a3b8; line-height:1.5;">
+                            <strong style="color:#cbd5e1;">Never stored in a database.</strong>
+                            Your key lives in server memory only while connected, and is removed permanently on logout or tab close.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- How to Play -->
+                <div style="background:#1f2937; border:1px solid #374151; border-radius:0.5rem; padding:0.9rem 1rem;">
+                    <p style="margin:0 0 0.6rem; font-size:0.7rem; font-weight:600; color:#9ca3af; text-transform:uppercase; letter-spacing:0.06em;">🎮 How to Play</p>
+                    <ul style="margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:0.35rem;">
+                        <li style="display:flex; gap:0.4rem; font-size:0.75rem; color:#9ca3af;"><span style="color:#22d3ee; flex-shrink:0;">▸</span> Find &amp; eliminate the <strong style="color:#e5e7eb;">bot</strong> hiding among players.</li>
+                        <li style="display:flex; gap:0.4rem; font-size:0.75rem; color:#9ca3af;"><span style="color:#22d3ee; flex-shrink:0;">▸</span> Use the <strong style="color:#e5e7eb;">chat</strong> to catch inconsistencies.</li>
+                        <li style="display:flex; gap:0.4rem; font-size:0.75rem; color:#9ca3af;"><span style="color:#22d3ee; flex-shrink:0;">▸</span> Give a <strong style="color:#e5e7eb;">higher star rating</strong> to suspected bots.</li>
+                        <li style="display:flex; gap:0.4rem; font-size:0.75rem; color:#9ca3af;"><span style="color:#22d3ee; flex-shrink:0;">▸</span> Highest-rated player is <strong style="color:#e5e7eb;">eliminated</strong> at round end.</li>
+                    </ul>
+
+                    <label style="display:flex; align-items:center; gap:0.6rem; margin-top:0.75rem; cursor:pointer;">
+                        <InputCheckbox @bind-Value="RuleCheckbox" class="form-checkbox h-4 w-4" />
+                        <span style="font-size:0.8rem; color:#d1d5db;">I understand and agree to the game rules</span>
+                    </label>
+                    @if (RuleCheckboxValidation)
+                    {
+                        <p style="margin:0.35rem 0 0; font-size:0.75rem; color:#f87171;">⚠ You must agree to the rules to continue.</p>
+                    }
+                </div>
+
             </div>
 
-
-            <!-- Action Buttons -->
-            <div class="mt-4 flex justify-end gap-2">
+            <!-- Footer Buttons -->
+            <div style="display:flex; align-items:center; justify-content:flex-end; gap:0.65rem; padding:1rem 1.5rem; border-top:1px solid #1f2937;">
                 <button @onclick="CancelAsync"
-                        class="cursor-pointer rounded bg-gray-500 px-4 py-2 text-white hover:bg-gray-600">
+                        style="padding:0.5rem 1.2rem; border-radius:0.5rem; border:1px solid #374151; background:transparent; color:#9ca3af; font-size:0.85rem; font-weight:500; cursor:pointer; transition:all 0.15s;"
+                        onmouseover="this.style.background='#1f2937';this.style.color='#f9fafb'"
+                        onmouseout="this.style.background='transparent';this.style.color='#9ca3af'">
                     Cancel
                 </button>
-                <button @onclick="SubmitAsync"
-                        class="cursor-pointer rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
-                    Submit
+                <button @onclick="SubmitAsync" disabled="@IsValidating"
+                        style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 1.4rem; border-radius:0.5rem; border:none; background:linear-gradient(to right,#06b6d4,#2563eb); color:#fff; font-size:0.85rem; font-weight:600; cursor:pointer; box-shadow:0 4px 14px rgba(6,182,212,0.25); transition:opacity 0.15s; opacity:@(IsValidating ? "0.6" : "1");">
+                    @if (IsValidating)
+                    {
+                        <span style="width:1rem; height:1rem; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin 0.7s linear infinite; display:inline-block;"></span>
+                        <span>Validating…</span>
+                    }
+                    else
+                    {
+                        <span>🚀 Join Game</span>
+                    }
                 </button>
             </div>
+
         </div>
     </div>
+
+    <style>
+        @@keyframes spin { to { transform: rotate(360deg); } }
+    </style>
 }

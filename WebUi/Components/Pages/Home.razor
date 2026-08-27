@@ -1,10 +1,11 @@
-﻿@page "/"
+@page "/"
 @inject IJSRuntime JS
 @inject NavigationManager NavigationManager
 @inject RoomManager roomManager
 @inject PlayerManager playerManager
 @inject VoteManager voteManager
 @inject BotManager botManager
+@inject APIResourceManager apiResourceManager
 @rendermode InteractiveServer
 
 
@@ -478,6 +479,8 @@
         }
         if(CurrentPlayer != null)
         {
+            // Remove user's API key from the pool — player is fully leaving.
+            apiResourceManager.RemoveUserKey(CurrentPlayer.Name);
             playerManager.RemovePlayer(CurrentPlayer.PlayerId);
             CurrentPlayer = null;
         }
@@ -533,6 +536,8 @@
                 await hubConnection.SendAsync("SendMessageToGroup", CurrentRoom.RoomId+"", 0, $"{CurrentPlayer.Name} left the group.");
             }
             roomManager.RemovePlayerFromRoom(CurrentRoom.RoomId,CurrentPlayer.PlayerId);
+            // Remove user's API key from the pool — browser/tab is closing.
+            apiResourceManager.RemoveUserKey(CurrentPlayer.Name);
             playerManager.RemovePlayer(CurrentPlayer.PlayerId);
             roomManager.RemoveEmptyRoom();
         }
